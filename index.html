@@ -44,7 +44,7 @@
 /* STICKY MOBILE BAR */
 .sticky-bar { display: none; }
 @media (max-width: 768px) {
-  .hero { padding: 80px 20px 100px !important; min-height: 82svh !important; }
+  .hero { padding: 60px 20px 80px !important; min-height: auto !important; }
   .sticky-bar {
     display: flex;
     position: fixed;
@@ -174,9 +174,9 @@ body {
 
 /* HERO */
 .hero {
-  position: relative; min-height: 100svh;
+  position: relative;
   display: flex; flex-direction: column; justify-content: flex-end;
-  background: var(--bg); overflow: hidden; padding: 120px 64px 80px;
+  background: var(--bg); overflow: hidden; padding: 96px 64px 72px;
 }
 .hero-eyebrow {
   font-size: 11px; letter-spacing: .3em; text-transform: uppercase;
@@ -279,7 +279,7 @@ body {
   .prow-price { font-size: 15px; }
 }
 /* SECTIONS */
-.sec { padding: 108px 48px; }
+.sec { padding: 72px 48px; }
 .eyebrow {
   font-size: 10px; letter-spacing: .3em; text-transform: uppercase;
   color: var(--gold); margin-bottom: 16px;
@@ -315,7 +315,7 @@ body {
 .feat-desc { font-size: 13px; color: var(--text-m); line-height: 1.7; }
 
 /* SERVICES */
-.svc-sec { padding: 108px 48px; background: var(--surface); }
+.svc-sec { padding: 72px 48px; background: var(--surface); }
 .svc-hd {
   display: flex; justify-content: space-between; align-items: flex-end;
   margin-bottom: 52px; flex-wrap: wrap; gap: 24px;
@@ -350,8 +350,8 @@ body {
 }
 
 /* GALLERY */
-.gal-sec { padding: 108px 0; background: var(--bg); }
-.gal-header { max-width: 1100px; margin: 0 auto; padding: 0 48px 52px; }
+.gal-sec { padding: 72px 0; background: var(--bg); }
+.gal-header { max-width: 1100px; margin: 0 auto; padding: 0 48px 40px; }
 .gal-slider-outer { position: relative; }
 .gal-slider-wrap {
   position: relative; overflow: hidden; height: 480px;
@@ -450,8 +450,8 @@ body {
   .scroll-ind { display: none; }
   .sec { padding: 72px 24px; }
   .svc-sec { padding: 72px 24px; }
-  .gal-sec { padding: 72px 0; }
-  .gal-header { padding: 0 24px 40px; }
+  .gal-sec { padding: 56px 0; }
+  .gal-header { padding: 0 24px 32px; }
   .gal-slider-wrap { height: 340px; }
   .gal-slide { left: 8%; width: 84%; }
   .gal-arrow { width: 40px; height: 40px; }
