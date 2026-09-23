@@ -74,6 +74,9 @@
   }
 }
 
+
+.cursor { display: inline-block; width: 3px; height: .85em; background: var(--gold); margin-left: 3px; vertical-align: middle; animation: blink .7s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 </style></head><body>
 <title>Князь</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -483,7 +486,7 @@ body {
   <p class="hero-eyebrow">Барбершоп · Брянск</p>
   <h1 class="hero-h1">
     <span class="hero-h1-white">Мы создаём</span>
-    <span class="hero-h1-orange">Образ</span>
+    <span class="hero-h1-orange" id="tw"></span>
   </h1>
   <p class="hero-sub">Премиальный барбершоп «Князь» в Брянске — пространство, где каждая деталь имеет значение. Профессиональные мастера, безупречный сервис.</p>
   <div class="hero-btns">
@@ -649,8 +652,8 @@ body {
     pct.textContent = '100%';
     setTimeout(function() { pl.classList.add('done'); }, 300);
   }
-  if (document.readyState === 'complete') { setTimeout(hide, 3500); }
-  else { window.addEventListener('load', function() { setTimeout(hide, 2000); }); }
+  if (document.readyState === 'complete') { setTimeout(hide, 1800); }
+  else { window.addEventListener('load', function() { setTimeout(hide, 1200); }); }
 })();
 
 const nav = document.getElementById('nav');
