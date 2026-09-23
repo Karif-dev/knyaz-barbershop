@@ -109,13 +109,13 @@
   --bg:        #050505;
   --surface:   #0d0d0d;
   --surface-2: #141414;
-  --gold:      #FF5A00;
-  --gold-lt:   #FF7A30;
-  --gold-dk:   #CC4800;
+  --gold:      #FFFFFF;
+  --gold-lt:   #E0E0E0;
+  --gold-dk:   #AAAAAA;
   --text:      #FFFFFF;
   --text-m:    #888888;
   --text-d:    #2A2A2A;
-  --border:    rgba(255,90,0,.15);
+  --border:    rgba(255,255,255,.12);
   --border-d:  rgba(255,255,255,.06);
   color-scheme: dark;
 }
@@ -204,7 +204,7 @@ body {
   font-family: 'Montserrat', sans-serif; font-weight: 900;
   font-size: clamp(140px, 21vw, 320px); line-height: .85;
   text-transform: uppercase; letter-spacing: -.03em;
-  color: transparent; -webkit-text-stroke: 1px rgba(255,90,0,.1);
+  color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,.07);
   padding-left: .02em; padding-bottom: .02em;
 }
 .hero > *:not(.hero-bg-text) { position: relative; z-index: 1; }
@@ -224,7 +224,7 @@ body {
 .bento-tag {
   display: inline-flex; align-items: center;
   font-size: 9px; letter-spacing: .3em; text-transform: uppercase;
-  color: var(--gold); background: rgba(255,90,0,.1);
+  color: var(--gold); background: rgba(255,255,255,.07);
   padding: 6px 12px; border-radius: 4px; width: fit-content; font-weight: 600;
 }
 .bento-heading {
@@ -244,7 +244,7 @@ body {
 }
 .btn-gold:hover {
   background: var(--gold-lt); border-color: var(--gold-lt);
-  transform: scale(1.03); box-shadow: 0 10px 40px rgba(255,90,0,.4);
+  transform: scale(1.03); box-shadow: 0 10px 40px rgba(255,255,255,.18);
 }
 .btn-ghost {
   font-size: 13px; letter-spacing: .18em; text-transform: uppercase;
