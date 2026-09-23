@@ -118,6 +118,12 @@
 .review-card.loaded { opacity: 1; transform: translateY(0); }
 .review-card:nth-child(2) { transition-delay: .1s; }
 .review-card:nth-child(3) { transition-delay: .2s; }
+.review-card:nth-child(4) { transition-delay: .3s; }
+.review-card:nth-child(5) { transition-delay: .4s; }
+.reviews-badge { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.rb-stars { color: var(--gold); font-size: 1.1rem; letter-spacing: 2px; }
+.rb-score { font-size: 1.5rem; font-weight: 700; color: var(--gold); }
+.rb-count { font-size: .85rem; color: var(--muted); }
 .review-stars { color: var(--text); font-size: 14px; letter-spacing: 2px; }
 .review-text { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.65; color: rgba(255,255,255,.7); flex: 1; }
 .review-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; }
@@ -699,36 +705,56 @@ body {
     <p class="sec-label rv">Отзывы клиентов</p>
     <div class="gold-bar rv"></div>
     <h2 class="sec-title rv">Что говорят о нас</h2>
+    <div class="reviews-badge rv">
+      <span class="rb-stars">★★★★★</span>
+      <span class="rb-score">4,9</span>
+      <span class="rb-count">41 отзыв · Яндекс Карты</span>
+    </div>
     <div class="reviews-grid" id="reviews-grid">
       <div class="review-card">
         <div class="review-stars">★★★★★</div>
-        <p class="review-text">«Хожу уже полгода. Мастер слышит с первого раза — сказал что хочу, сделал именно это. Атмосфера крутая, не торопят.»</p>
+        <p class="review-text">«Прихожу уже 3-й год на стрижку и оформление бороды к мастеру Дмитрию. Всегда учитывает и советует пожелания. Мастер своего дела, очень трепетно относится к работе.»</p>
         <div class="review-footer">
-          <div class="review-author">Алексей К.</div>
-          <div class="review-source">ВКонтакте</div>
+          <div class="review-author">Илья Г.</div>
+          <div class="review-source">Яндекс Карты</div>
         </div>
       </div>
       <div class="review-card">
         <div class="review-stars">★★★★★</div>
-        <p class="review-text">«Лучший барбершоп в Брянске без вопросов. Fade получился идеальный. Записался онлайн, пришёл ровно по времени — никаких очередей.»</p>
+        <p class="review-text">«Без преувеличения, Дмитрий — лучший мастер в городе! Если вы в вечном поиске «своего» барбера — искренне рекомендую записаться.»</p>
         <div class="review-footer">
-          <div class="review-author">Сергей М.</div>
-          <div class="review-source">ВКонтакте</div>
+          <div class="review-author">Ivan B.</div>
+          <div class="review-source">Яндекс Карты</div>
         </div>
       </div>
       <div class="review-card">
         <div class="review-stars">★★★★★</div>
-        <p class="review-text">«Интерьер топ, мастера знают своё дело. Цены адекватные для такого уровня. Буду возвращаться.»</p>
+        <p class="review-text">«Дима прекрасный мастер, опытный и компетентный в любой просьбе, стригусь второй год уже, и менять не собираюсь! Рекомендую 🔥»</p>
         <div class="review-footer">
-          <div class="review-author">Никита Р.</div>
-          <div class="review-source">ВКонтакте</div>
+          <div class="review-author">Игорь Цымбал</div>
+          <div class="review-source">Яндекс Карты</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Очень понравился барбершоп. Мастер сразу понял, чего я хочу, рассказал о паре вариантов. Стрижка получилась как я и хотел. Классная атмосфера.»</p>
+        <div class="review-footer">
+          <div class="review-author">Степан</div>
+          <div class="review-source">Яндекс Карты</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Превосходное место для настоящих ценителей стиля! Обслуживание на высшем уровне, мастера знают своё дело до мелочей. Атмосфера в «Князе» — отдельный кайф.»</p>
+        <div class="review-footer">
+          <div class="review-author">Николай Б.</div>
+          <div class="review-source">Яндекс Карты</div>
         </div>
       </div>
     </div>
-    <a href="https://vk.com/knyaz_bryansk" target="_blank" class="reviews-more rv">Все отзывы во ВКонтакте →</a>
+    <a href="https://yandex.ru/maps/org/knyaz/145439345097/reviews/" target="_blank" class="reviews-more rv">Все отзывы на Яндекс Картах →</a>
   </div>
 </section>
-
 <!-- BOOKING -->
 
 
