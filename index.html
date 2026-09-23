@@ -41,37 +41,58 @@
 }
 
 
-/* STICKY MOBILE BOOKING BUTTON */
-.sticky-book-btn {
-  display: none;
-}
+/* STICKY MOBILE BAR */
+.sticky-bar { display: none; }
 @media (max-width: 768px) {
-  .sticky-book-btn {
+  .sticky-bar {
     display: flex;
     position: fixed;
-    bottom: 24px;
-    right: 20px;
+    bottom: 0; left: 0; right: 0;
     z-index: 999;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 10px 16px 22px;
+    background: rgba(5,5,5,.97);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255,255,255,.07);
+  }
+  .sticky-bar-call {
+    flex-shrink: 0;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .15s;
+  }
+  .sticky-bar-call:active { background: rgba(255,255,255,.08); }
+  .sticky-bar-call svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .sticky-bar-book {
+    flex: 1; height: 48px;
     background: var(--gold);
     color: #000;
     border: none;
     cursor: pointer;
-    padding: 14px 22px;
     font-family: 'Oswald', sans-serif;
     font-weight: 600;
     font-size: 13px;
-    letter-spacing: .18em;
+    letter-spacing: .16em;
     text-transform: uppercase;
-    border-radius: 40px;
-    box-shadow: 0 4px 20px rgba(255,90,0,.45);
-    transition: transform .15s, box-shadow .15s;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: opacity .15s;
   }
-  .sticky-book-btn:active {
-    transform: scale(.96);
-    box-shadow: 0 2px 10px rgba(255,90,0,.3);
-  }
+  .sticky-bar-book:active { opacity: .85; }
+  .sticky-bar-book svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 }
 
 
@@ -490,7 +511,6 @@ body {
   </h1>
   <p class="hero-sub">Премиальный барбершоп «Князь» в Брянске — пространство, где каждая деталь имеет значение. Профессиональные мастера, безупречный сервис.</p>
   <div class="hero-btns">
-    <a href="#" onclick="openBooking();return false;" class="btn-gold">Записаться онлайн</a>
     <a href="tel:+79529651913" class="btn-ghost">
       <svg class="ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
       Позвонить
@@ -513,7 +533,6 @@ body {
       <p class="bento-heading">Запишитесь онлайн или по телефону</p>
       <p class="bento-text">Удобная онлайн-запись, звонок или ВКонтакте — мы бережём ваше время с первого касания.</p>
       <div class="bento-cta">
-        <a href="#" onclick="openBooking();return false;" class="btn-gold" style="width:100%;justify-content:center;box-sizing:border-box;">Записаться онлайн</a>
       </div>
     </div>
   </div>
@@ -544,7 +563,6 @@ body {
 <section class="svc-sec" id="services">
   <div class="svc-hd rv">
     <div><p class="eyebrow">Наши услуги</p><div class="gold-bar"></div><h2 class="sec-title">Прайс-лист</h2></div>
-    <a href="#" onclick="openBooking();return false;" class="btn-gold">Записаться</a>
   </div>
   <div class="tabs" role="tablist">
     <button class="tab on" role="tab" aria-selected="true"  onclick="tab('haircuts',this)">Стрижки</button>
@@ -692,7 +710,16 @@ document.querySelectorAll('.rv').forEach(el => io.observe(el));
 </script>
 
 
-<!-- STICKY MOBILE BOOKING BUTTON -->
+<!-- STICKY MOBILE BAR -->
+<div class="sticky-bar">
+  <a href="tel:+79529651913" class="sticky-bar-call" aria-label="Позвонить">
+    <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+  </a>
+  <button class="sticky-bar-book" onclick="openBooking()">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Записаться онлайн
+  </button>
+</div>
 
 
 <!-- BOOKING SLIDEOUT -->
