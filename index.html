@@ -831,22 +831,7 @@ const mob = document.getElementById('mob');
 let open = false;
 document.getElementById('burger').addEventListener('click', () => { open=!open; mob.classList.toggle('open', open); });
 function closeMob() { open=false; mob.classList.remove('open'); }
-const words = ['Образы', 'Стрижки', 'Бороды', 'Стиль'];
-let wi=0, ci=0, del=false;
-const el = document.getElementById('tw');
-function type() {
-  const w = words[wi];
-  if (!del) {
-    el.innerHTML = w.slice(0,ci) + '<span class="cursor"></span>';
-    ci++;
-    if (ci > w.length) { del=true; return setTimeout(type,1900); }
-  } else {
-    el.innerHTML = w.slice(0,ci) + '<span class="cursor"></span>';
-    ci--;
-    if (ci < 0) { del=false; wi=(wi+1)%words.length; return setTimeout(type,380); }
-  }
-  setTimeout(type, del?55:95);
-}
+
 (function(){
   var _pre=document.querySelector('.preloader');
   var _started=false;
@@ -939,7 +924,7 @@ document.querySelectorAll('.rv').forEach(el => io.observe(el));
 (function(){
   var CHARS='АБВГДЖИКЛМНОРСТФХЧabcdef0#@!%';
   var words=['Образы','Стрижки','Бороды','Стиль'];
-  var el=document.getElementById('scr');
+  var el=document.getElementById('tw');
   if(!el)return;
   var wi=0,running=false;
   function scrambleTo(target,cb){
