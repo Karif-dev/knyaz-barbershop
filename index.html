@@ -1,4 +1,46 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* BOOKING SLIDEOUT PANEL */
+.booking-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.65);
+  opacity: 0; visibility: hidden;
+  transition: opacity .35s, visibility .35s;
+  z-index: 1000;
+}
+.booking-overlay.open { opacity: 1; visibility: visible; }
+
+.booking-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(480px, 100vw);
+  background: #fff;
+  transform: translateX(100%);
+  transition: transform .38s cubic-bezier(.4,0,.2,1);
+  z-index: 1001;
+  display: flex; flex-direction: column;
+}
+.booking-panel.open { transform: translateX(0); }
+
+.booking-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px;
+  background: #111; flex-shrink: 0;
+}
+.booking-panel-title {
+  font-family: 'Stalinist One', serif;
+  font-size: 16px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--gold);
+}
+.booking-panel-close {
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,.6); font-size: 22px; line-height: 1;
+  padding: 4px 8px; transition: color .15s;
+}
+.booking-panel-close:hover { color: #fff; }
+
+.booking-panel-iframe {
+  flex: 1; border: none; display: block; width: 100%;
+}
+
+</style></head><body>
 <title>Князь</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Montserrat:wght@400;700;800;900&family=Inter:wght@300;400;500;600&display=swap|Stalinist+One">
@@ -399,14 +441,14 @@ body {
     <li><a href="#gallery">Работы</a></li>
     <li><a href="#contacts">Контакты</a></li>
   </ul>
-  <a href="#booking" class="nav-cta">Записаться</a>
+  <a href="#" onclick="openBooking();return false;" class="nav-cta">Записаться</a>
   <button class="burger" id="burger" aria-label="Меню"><span></span><span></span><span></span></button>
 </nav>
 <div class="mob-menu" id="mob">
   <a href="#about"    onclick="closeMob()">О нас</a>
   <a href="#services" onclick="closeMob()">Услуги</a>
   <a href="#gallery"  onclick="closeMob()">Работы</a>
-  <a href="#booking"  onclick="closeMob()">Запись</a>
+  <a href="#" onclick="openBooking();return false;"  onclick="closeMob()">Запись</a>
   <a href="#contacts" onclick="closeMob()">Контакты</a>
 </div>
 
@@ -420,7 +462,7 @@ body {
   </h1>
   <p class="hero-sub">Премиальный барбершоп «Князь» в Брянске — пространство, где каждая деталь имеет значение. Профессиональные мастера, безупречный сервис.</p>
   <div class="hero-btns">
-    <a href="#booking" class="btn-gold">Записаться онлайн</a>
+    <a href="#" onclick="openBooking();return false;" class="btn-gold">Записаться онлайн</a>
     <a href="tel:+79529651913" class="btn-ghost">
       <svg class="ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
       Позвонить
@@ -447,7 +489,7 @@ body {
       <p class="bento-heading">Запишитесь онлайн или по телефону</p>
       <p class="bento-text">Удобная онлайн-запись, звонок или ВКонтакте — мы бережём ваше время с первого касания.</p>
       <div class="bento-cta">
-        <a href="#booking" class="btn-gold" style="width:100%;justify-content:center;box-sizing:border-box;">Записаться онлайн</a>
+        <a href="#" onclick="openBooking();return false;" class="btn-gold" style="width:100%;justify-content:center;box-sizing:border-box;">Записаться онлайн</a>
       </div>
     </div>
   </div>
@@ -478,7 +520,7 @@ body {
 <section class="svc-sec" id="services">
   <div class="svc-hd rv">
     <div><p class="eyebrow">Наши услуги</p><div class="gold-bar"></div><h2 class="sec-title">Прайс-лист</h2></div>
-    <a href="#booking" class="btn-gold">Записаться</a>
+    <a href="#" onclick="openBooking();return false;" class="btn-gold">Записаться</a>
   </div>
   <div class="tabs" role="tablist">
     <button class="tab on" role="tab" aria-selected="true"  onclick="tab('haircuts',this)">Стрижки</button>
@@ -561,7 +603,7 @@ body {
         <a href="#about">О нас</a>
         <a href="#services">Услуги</a>
         <a href="#gallery">Работы</a>
-        <a href="#booking">Запись</a>
+        <a href="#" onclick="openBooking();return false;">Запись</a>
       </div>
     </div>
   </div>
@@ -625,4 +667,32 @@ const io = new IntersectionObserver(entries => {
 }, {threshold:0.1});
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
 </script>
+
+<!-- BOOKING SLIDEOUT -->
+<div class="booking-overlay" id="bookOverlay" onclick="closeBooking()"></div>
+<div class="booking-panel" id="bookPanel">
+  <div class="booking-panel-head">
+    <span class="booking-panel-title">Запись</span>
+    <button class="booking-panel-close" onclick="closeBooking()">✕</button>
+  </div>
+  <iframe class="booking-panel-iframe" src="about:blank" id="bookIframe"
+    title="Онлайн-запись в барбершоп Князь"></iframe>
+</div>
+
+<script>
+function openBooking() {
+  const iframe = document.getElementById('bookIframe');
+  if (iframe.src === 'about:blank') iframe.src = 'https://n2527773.yclients.ru/';
+  document.getElementById('bookOverlay').classList.add('open');
+  document.getElementById('bookPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeBooking() {
+  document.getElementById('bookOverlay').classList.remove('open');
+  document.getElementById('bookPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBooking(); });
+</script>
+
 </body></html>
