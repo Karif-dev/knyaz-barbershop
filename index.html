@@ -609,15 +609,16 @@ body {
   <a href="https://yandex.ru/maps/org/knyaz/145439345097/reviews/" target="_blank" class="br-link">Читать отзывы →</a>
 </div>
     <div class="bento-card bento-right">
-      <span class="bento-tag">Запись</span>
-      <p class="bento-heading">Запишитесь онлайн или по телефону</p>
-      <p class="bento-text">Звонок или онлайн — мы бережём ваше время с первого касания.</p>
-      <div class="bento-cta">
-        <a href="tel:+79529651913" class="bento-cta-btn bento-cta-call">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.5 10.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012.4 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.06 6.06l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"></path></svg>
-          +7 (952) 965-19-13
-        </a>
-
+      <span class="bento-tag">Адрес</span>
+      <p class="bento-heading">ул. Куйбышева, 19</p>
+      <p class="bento-text" style="color:var(--text-m)">Брянск</p>
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-d)">Режим работы</span>
+          <span style="font-size:14px;color:var(--text)">Пн–Пт: 10:00–21:00</span>
+          <span style="font-size:14px;color:var(--text)">Сб–Вс: 10:00–20:00</span>
+        </div>
+        <a href="tel:+79529651913" style="color:var(--gold);font-size:1.1rem;font-family:'Montserrat',sans-serif;font-weight:700;text-decoration:none;letter-spacing:.02em;">+7 (952) 965-19-13</a>
       </div>
     </div>
   </div>
@@ -973,14 +974,12 @@ document.querySelectorAll('.rv').forEach(el => io.observe(el));
     <span class="booking-panel-title">Запись</span>
     <button class="booking-panel-close" onclick="closeBooking()">✕</button>
   </div>
-  <iframe class="booking-panel-iframe" src="about:blank" id="bookIframe"
+  <iframe class="booking-panel-iframe" src="https://n2527773.yclients.ru/" id="bookIframe"
     title="Онлайн-запись в барбершоп КНЯZЬ"></iframe>
 </div>
 
 <script>
 function openBooking() {
-  const iframe = document.getElementById('bookIframe');
-  if (iframe.src === 'about:blank') iframe.src = 'https://n2527773.yclients.ru/';
   document.getElementById('bookOverlay').classList.add('open');
   document.getElementById('bookPanel').classList.add('open');
   document.body.style.overflow = 'hidden';
