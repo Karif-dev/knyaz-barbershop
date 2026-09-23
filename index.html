@@ -109,31 +109,22 @@
 .bento-cta-vk { background: transparent; color: rgba(255,255,255,.75); border: 1px solid rgba(255,255,255,.2); }
 .bento-cta-vk:hover { color: #fff; border-color: rgba(255,255,255,.5); }
 
-/* === MASTERS SECTION === */
-.masters-sec { padding: 80px 48px; background: var(--surface); }
-.masters-inner { max-width: 1100px; margin: 0 auto; }
-.masters-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; margin-top: 48px; }
-.master-card { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 32px 28px; display: flex; flex-direction: column; gap: 12px; transition: border-color .2s; }
-.master-card:hover { border-color: rgba(255,255,255,.3); }
-.master-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'Stalinist One', serif; font-size: 22px; color: var(--text); letter-spacing: 0; margin-bottom: 8px; }
-.master-name { font-family: 'Oswald', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text); }
-.master-role { font-size: 12px; color: var(--text-m); letter-spacing: .12em; text-transform: uppercase; font-family: 'Inter', sans-serif; }
-.master-spec { font-size: 13px; color: rgba(255,255,255,.5); font-family: 'Inter', sans-serif; line-height: 1.5; margin-top: 4px; }
-@media(max-width:768px){
-  .masters-sec { padding: 56px 20px; }
-  .masters-grid { grid-template-columns: 1fr; gap: 16px; }
-}
 
-/* === REVIEWS SECTION === */
+/* === REVIEWS === */
 .reviews-sec { padding: 80px 48px; background: var(--bg); }
 .reviews-inner { max-width: 1100px; margin: 0 auto; }
 .reviews-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; margin-top: 48px; }
-.review-card { background: var(--surface); border: 1px solid var(--border-d); border-radius: 4px; padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; }
+.review-card { background: var(--surface); border: 1px solid var(--border-d); border-radius: 4px; padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; opacity: 0; transform: translateY(24px); transition: opacity .5s ease, transform .5s ease; }
+.review-card.loaded { opacity: 1; transform: translateY(0); }
+.review-card:nth-child(2) { transition-delay: .1s; }
+.review-card:nth-child(3) { transition-delay: .2s; }
 .review-stars { color: var(--text); font-size: 14px; letter-spacing: 2px; }
 .review-text { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.65; color: rgba(255,255,255,.7); flex: 1; }
 .review-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; }
 .review-author { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--text); }
 .review-source { font-size: 11px; color: var(--text-m); letter-spacing: .08em; text-transform: uppercase; }
+.reviews-more { display: block; text-align: center; margin-top: 32px; font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.45); text-decoration: none; }
+.reviews-more:hover { color: rgba(255,255,255,.8); }
 @media(max-width:768px){
   .reviews-sec { padding: 56px 20px; }
   .reviews-grid { grid-template-columns: 1fr; gap: 16px; }
@@ -671,35 +662,6 @@ body {
 </section>
 
 
-<!-- MASTERS -->
-<section class="masters-sec" id="masters">
-  <div class="masters-inner">
-    <p class="sec-label rv">Наша команда</p>
-    <div class="gold-bar rv"></div>
-    <h2 class="sec-title rv">Мастера</h2>
-    <div class="masters-grid">
-      <div class="master-card rv">
-        <div class="master-avatar">А</div>
-        <div class="master-name">Александр</div>
-        <div class="master-role">Старший барбер · 7 лет опыта</div>
-        <p class="master-spec">Специализация — fade, классические стрижки, оформление и моделирование бороды</p>
-      </div>
-      <div class="master-card rv">
-        <div class="master-avatar">Д</div>
-        <div class="master-name">Дмитрий</div>
-        <div class="master-role">Барбер · 4 года опыта</div>
-        <p class="master-spec">Crop fade, taper, детские стрижки. Авторский подход к каждому образу</p>
-      </div>
-      <div class="master-card rv">
-        <div class="master-avatar">И</div>
-        <div class="master-name">Илья</div>
-        <div class="master-role">Барбер · 3 года опыта</div>
-        <p class="master-spec">Классические техники, стайлинг, работа с бородой любой сложности</p>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- GALLERY -->
 <section class="gal-sec" id="gallery">
   <div class="gal-header">
@@ -730,38 +692,40 @@ body {
 </section>
 
 
+
 <!-- REVIEWS -->
 <section class="reviews-sec">
   <div class="reviews-inner">
     <p class="sec-label rv">Отзывы клиентов</p>
     <div class="gold-bar rv"></div>
     <h2 class="sec-title rv">Что говорят о нас</h2>
-    <div class="reviews-grid">
-      <div class="review-card rv">
+    <div class="reviews-grid" id="reviews-grid">
+      <div class="review-card">
         <div class="review-stars">★★★★★</div>
-        <p class="review-text">«Хожу к Александру уже год. Стрижка всегда точная, слышит с первого слова что хочешь. Атмосфера приятная, не торопят — редкость для Брянска.»</p>
+        <p class="review-text">«Хожу уже полгода. Мастер слышит с первого раза — сказал что хочу, сделал именно это. Атмосфера крутая, не торопят.»</p>
         <div class="review-footer">
-          <div class="review-author">Михаил, 28 лет</div>
-          <div class="review-source">Яндекс Карты</div>
-        </div>
-      </div>
-      <div class="review-card rv">
-        <div class="review-stars">★★★★★</div>
-        <p class="review-text">«Лучший барбершоп в городе. Цены адекватные, мастера знают своё дело. Топ-мастер стоит каждого рубля — fade получился идеальный.»</p>
-        <div class="review-footer">
-          <div class="review-author">Андрей, 34 года</div>
+          <div class="review-author">Алексей К.</div>
           <div class="review-source">ВКонтакте</div>
         </div>
       </div>
-      <div class="review-card rv">
+      <div class="review-card">
         <div class="review-stars">★★★★★</div>
-        <p class="review-text">«Записался онлайн — всё чётко по времени, никаких очередей. Сделали именно то, что просил, с первого раза. Теперь только сюда.»</p>
+        <p class="review-text">«Лучший барбершоп в Брянске без вопросов. Fade получился идеальный. Записался онлайн, пришёл ровно по времени — никаких очередей.»</p>
         <div class="review-footer">
-          <div class="review-author">Денис, 22 года</div>
-          <div class="review-source">Яндекс Карты</div>
+          <div class="review-author">Сергей М.</div>
+          <div class="review-source">ВКонтакте</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Интерьер топ, мастера знают своё дело. Цены адекватные для такого уровня. Буду возвращаться.»</p>
+        <div class="review-footer">
+          <div class="review-author">Никита Р.</div>
+          <div class="review-source">ВКонтакте</div>
         </div>
       </div>
     </div>
+    <a href="https://vk.com/knyaz_bryansk" target="_blank" class="reviews-more rv">Все отзывы во ВКонтакте →</a>
   </div>
 </section>
 
@@ -843,7 +807,18 @@ function type() {
   }
   setTimeout(type, del?55:95);
 }
-(function(){var _pre=document.querySelector('.preloader');function _go(){ci=0;wi=0;del=false;el.style.visibility='visible';setTimeout(type,100);}if(_pre){_pre.addEventListener('transitionend',function _th(e){if(e.target===_pre&&e.propertyName==='opacity'){_pre.removeEventListener('transitionend',_th);_go();}});}else{_go();}})();
+(function(){
+  var _pre=document.querySelector('.preloader');
+  var _started=false;
+  function _go(){if(_started)return;_started=true;ci=0;wi=0;del=false;el.style.visibility='visible';setTimeout(type,100);}
+  if(_pre){
+    _pre.addEventListener('transitionend',function _th(e){
+      if(e.target===_pre&&e.propertyName==='opacity'){_pre.removeEventListener('transitionend',_th);_go();}
+    });
+    // Fallback: если transitionend не сработал
+    setTimeout(_go,4000);
+  }else{_go();}
+})();
 function tab(id, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t => { t.classList.remove('on'); t.setAttribute('aria-selected','false'); });
@@ -906,6 +881,19 @@ const io = new IntersectionObserver(entries => {
 })();
 
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+// Reviews lazy-reveal
+(function(){
+  var cards = document.querySelectorAll('.review-card');
+  if(!cards.length) return;
+  var ro = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add('loaded'); ro.unobserve(e.target); }
+    });
+  },{threshold:0.15});
+  cards.forEach(function(c){ ro.observe(c); });
+})();
+
 </script>
 
 
@@ -917,9 +905,7 @@ document.querySelectorAll('.rv').forEach(el => io.observe(el));
     <h2 class="sec-title rv" style="margin-bottom:6px;">ул. Куйбышева, 19</h2>
     <p style="color:rgba(255,255,255,.4);font-family:'Inter',sans-serif;font-size:14px;margin-bottom:0;">Брянск · +7 (952) 965-19-13</p>
   </div>
-  <div style="height:380px;overflow:hidden;">
-    <iframe src="https://yandex.ru/map-widget/v1/?ll=34.300151%2C53.308031&z=17&pt=34.300151%2C53.308031%2Cpm2rdm&l=map&lang=ru_RU" width="100%" height="380" style="border:0;display:block;filter:invert(1) hue-rotate(180deg) saturate(0.7) brightness(0.9);" loading="lazy" allowfullscreen title="КНЯZЬ на карте"></iframe>
-  </div>
+  
 </section>
 <!-- STICKY MOBILE BAR -->
 <div class="sticky-bar">
