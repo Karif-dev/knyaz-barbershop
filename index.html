@@ -190,6 +190,7 @@ body {
 }
 .hero-h1-white { display: block; color: var(--text); }
 .hero-h1-orange { display: block; color: var(--gold); }
+#tw { visibility: hidden; }
 .hero-sub {
   font-size: clamp(.95rem, 1.8vw, 1.15rem); line-height: 1.7;
   color: var(--text-m); max-width: 520px; margin-bottom: 2.5rem;
@@ -537,7 +538,7 @@ body {
   <div class="hero-bg-text" aria-hidden="true">КНЯZЬ</div>
   <p class="hero-eyebrow">Барбершоп · Брянск</p>
   <h1 class="hero-h1">
-    <span class="hero-h1-white">Мы создаём</span>
+    <span class="hero-h1-white">Мы создаём&nbsp;</span>
     <span class="hero-h1-orange" id="tw"></span>
   </h1>
   <p class="hero-sub">Брянск. Точные стрижки, ноль лишнего.</p>
@@ -729,7 +730,7 @@ function type() {
   }
   setTimeout(type, del?55:95);
 }
-(function(){var _pre=document.querySelector('.preloader');function _go(){ci=0;wi=0;del=false;setTimeout(type,200);}if(_pre){_pre.addEventListener('transitionend',function _th(e){if(e.propertyName==='opacity'){_pre.removeEventListener('transitionend',_th);_go();}});}else{_go();}})();
+(function(){var _pre=document.querySelector('.preloader');function _go(){ci=0;wi=0;del=false;el.style.visibility='visible';setTimeout(type,100);}if(_pre){_pre.addEventListener('transitionend',function _th(e){if(e.target===_pre&&e.propertyName==='opacity'){_pre.removeEventListener('transitionend',_th);_go();}});}else{_go();}})();
 function tab(id, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t => { t.classList.remove('on'); t.setAttribute('aria-selected','false'); });
