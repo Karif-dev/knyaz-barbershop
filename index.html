@@ -229,12 +229,12 @@ body {
 .logo {
         font-family: 'Stalinist One', serif;
         font-size: 18px; letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
-        color: var(--gold); display: inline-flex; align-items: center; gap: 0;
+        color: var(--gold); display: inline-flex; align-items: flex-end; gap: 0; line-height: 1;
       }
 .logo-k {
-  height: 22px; width: auto;
+  height: 26px; width: auto;
   display: block; flex-shrink: 0;
-  margin-right: 1px;
+  margin-right: 1px; margin-bottom: -1px;
 }
 .nav-links { display: flex; gap: 40px; list-style: none; }
 .nav-links a {
@@ -710,16 +710,16 @@ body {
 }
 .preloader.done { opacity: 0; visibility: hidden; }
 .pre-logo {
-  display: flex; align-items: center; gap: 0;
+  display: flex; align-items: flex-end; gap: 0; line-height: 1;
   font-family: 'Stalinist One', serif; font-weight: 400;
   font-size: 40px; letter-spacing: .05em; color: var(--gold);
   text-transform: uppercase;
   animation: preFadeIn 1s ease forwards;
 }
 .pre-k {
-  height: 46px; width: auto;
+  height: 56px; width: auto;
   display: block; flex-shrink: 0;
-  margin-right: 2px;
+  margin-right: 1px; margin-bottom: -2px;
 }
 .pre-line-wrap {
   width: 200px; height: 1px; background: rgba(200,169,110,.15); overflow: hidden;
@@ -740,14 +740,14 @@ body {
 
 <!-- PRELOADER -->
 <div class="preloader" id="preloader">
-  <div class="pre-logo"><img src="/logo-k.jpg" alt="" class="pre-k">НЯZЬ</div>
+  <div class="pre-logo"><img src="/logo-k.png" alt="" class="pre-k">НЯZЬ</div>
   <div class="pre-line-wrap"><div class="pre-line"></div></div>
   <div class="pre-pct" id="prePct">Загрузка…</div>
 </div>
 
 <!-- NAV -->
 <nav class="nav" id="nav">
-  <a href="#top" class="logo"><img src="/logo-k.jpg" alt="" class="logo-k">НЯZЬ</a>
+  <a href="#top" class="logo"><img src="/logo-k.png" alt="" class="logo-k">НЯZЬ</a>
   <ul class="nav-links">
     <li><a href="#about">О нас</a></li>
     <li><a href="#services">Услуги</a></li>
@@ -1003,7 +1003,7 @@ body {
 <footer class="footer" id="contacts">
   <div class="foot-grid">
     <div class="foot-brand">
-      <a href="#top" class="logo"><img src="/logo-k.jpg" alt="" class="logo-k">НЯZЬ</a>
+      <a href="#top" class="logo"><img src="/logo-k.png" alt="" class="logo-k">НЯZЬ</a>
       <p>Премиальный барбершоп в Брянске. Профессиональные стрижки, оформление бороды, безупречный сервис.</p>
     </div>
     <div class="foot-col">
