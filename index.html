@@ -728,6 +728,12 @@ body {
   height: 100%; width: 0; background: var(--gold);
   animation: preLoad 3.2s cubic-bezier(.4,0,.2,1) forwards;
 }
+.pre-eyebrow {
+  font-family: 'Oswald', sans-serif; font-size: 11px; letter-spacing: .3em;
+  color: var(--text-d); text-transform: uppercase;
+  margin-top: -16px;
+  animation: preFadeIn 1s ease forwards;
+}
 .pre-pct {
   font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: .3em;
   color: var(--text-d); text-transform: uppercase;
@@ -741,6 +747,7 @@ body {
 <!-- PRELOADER -->
 <div class="preloader" id="preloader">
   <div class="pre-logo"><img src="/logo-k.png" alt="" class="pre-k">НЯЗЬ</div>
+  <div class="pre-eyebrow">Барбершоп · Брянск</div>
   <div class="pre-line-wrap"><div class="pre-line"></div></div>
   <div class="pre-pct" id="prePct">Загрузка…</div>
 </div>
