@@ -478,46 +478,43 @@ body {
   border-radius: 14px;
   overflow: hidden;
   transition: border-color .25s;
+  display: flex;
+  flex-direction: row;
 }
 .team-card:hover { border-color: var(--gold); }
 .team-photo {
-  height: 300px;
-  background: linear-gradient(160deg, #1c1a15 0%, #0d0c09 60%, #0a0a0a 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  width: 220px;
+  flex-shrink: 0;
+  background: #0a0a0a;
   overflow: hidden;
+  position: relative;
 }
-.team-photo::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 40%, rgba(201,162,39,.08) 0%, transparent 65%);
+.team-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 15%;
+  display: block;
 }
-.team-initials {
-  font-size: 100px;
-  font-weight: 900;
-  color: var(--gold);
-  opacity: .15;
-  letter-spacing: -6px;
-  font-family: var(--ff-head);
-  line-height: 1;
-  user-select: none;
+.team-info {
+  padding: 28px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-.team-info { padding: 24px 26px 28px; }
-.team-name { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 4px; font-family: var(--ff-head); }
+.team-name { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 5px; font-family: var(--ff-head); }
 .team-role {
   font-size: 11px; color: var(--gold); letter-spacing: .13em;
-  text-transform: uppercase; margin-bottom: 14px;
+  text-transform: uppercase; margin-bottom: 16px;
 }
 .team-bio { font-size: 13px; color: rgba(255,255,255,.72); line-height: 1.7; }
 @media(max-width:768px) {
   .svc-grid { grid-template-columns: 1fr; gap: 14px; }
-  .svc-img { height: 110px; }
+  .svc-img { height: 180px; }
   .team-sec { padding: 56px 24px; }
   .team-grid { gap: 16px; }
-  .team-photo { height: 240px; }
+  .team-card { flex-direction: column; }
+  .team-photo { width: 100%; height: 260px; }
 }
 .tabs {
   display: flex; border-bottom: 1px solid var(--border-d);
@@ -864,7 +861,7 @@ body {
   <div class="team-grid">
     <div class="team-card">
       <div class="team-photo">
-        <img src="/dmitry.jpg" alt="Дмитрий" style="width:100%;height:100%;object-fit:cover;object-position:50% 15%;display:block;">
+        <img src="/dmitry.jpg" alt="Дмитрий" >
       </div>
       <div class="team-info">
         <div class="team-name">Дмитрий</div>
