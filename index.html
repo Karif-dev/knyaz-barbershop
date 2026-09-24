@@ -229,8 +229,14 @@ body {
 .logo {
         font-family: 'Stalinist One', serif;
         font-size: 18px; letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
-        color: var(--gold);
+        color: var(--gold); display: inline-flex; align-items: center;
       }
+.logo-img {
+  height: 38px; width: 38px;
+  object-fit: cover; object-position: 50% 22%;
+  border-radius: 6px;
+  display: block;
+}
 .nav-links { display: flex; gap: 40px; list-style: none; }
 .nav-links a {
   font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
@@ -705,9 +711,9 @@ body {
 }
 .preloader.done { opacity: 0; visibility: hidden; }
 .pre-logo {
-  font-family: 'Stalinist One', serif; font-weight: 400;
-  font-size: 36px; letter-spacing: .08em; color: var(--gold);
-  text-transform: uppercase;
+  width: 160px; height: 160px;
+  object-fit: cover; object-position: 50% 45%;
+  border-radius: 12px;
   animation: preFadeIn 1s ease forwards;
 }
 .pre-line-wrap {
@@ -729,14 +735,14 @@ body {
 
 <!-- PRELOADER -->
 <div class="preloader" id="preloader">
-  <div class="pre-logo">КНЯZЬ</div>
+  <img src="/logo.jpg" alt="КНЯЗЬ" class="pre-logo">
   <div class="pre-line-wrap"><div class="pre-line"></div></div>
   <div class="pre-pct" id="prePct">Загрузка…</div>
 </div>
 
 <!-- NAV -->
 <nav class="nav" id="nav">
-  <a href="#top" class="logo">КНЯZЬ</a>
+  <a href="#top" class="logo"><img src="/logo.jpg" alt="КНЯЗЬ" class="logo-img"></a>
   <ul class="nav-links">
     <li><a href="#about">О нас</a></li>
     <li><a href="#services">Услуги</a></li>
@@ -775,8 +781,8 @@ body {
     </div>
     <div class="bento-card bento-center bento-rating">
   <div class="br-stars">★★★★★</div>
-  <div class="br-score">4.9</div>
-  <div class="br-count">41 отзыв</div>
+  <div class="br-score">5.0</div>
+  <div class="br-count">43 отзыва</div>
   <div class="br-source">Яндекс Карты</div>
   <a href="https://yandex.ru/maps/org/knyaz/145439345097/reviews/" target="_blank" class="br-link">Читать отзывы →</a>
 </div>
@@ -937,8 +943,8 @@ body {
     <h2 class="sec-title rv">Что говорят о нас</h2>
     <div class="reviews-badge rv">
       <span class="rb-stars">★★★★★</span>
-      <span class="rb-score">4,9</span>
-      <span class="rb-count">41 отзыв · Яндекс Карты</span>
+      <span class="rb-score">5,0</span>
+      <span class="rb-count">43 отзыва · Яндекс Карты</span>
     </div>
     <div class="reviews-grid" id="reviews-grid">
       <div class="review-card">
@@ -992,7 +998,7 @@ body {
 <footer class="footer" id="contacts">
   <div class="foot-grid">
     <div class="foot-brand">
-      <a href="#top" class="logo">КНЯZЬ</a>
+      <a href="#top" class="logo"><img src="/logo.jpg" alt="КНЯЗЬ" class="logo-img"></a>
       <p>Премиальный барбершоп в Брянске. Профессиональные стрижки, оформление бороды, безупречный сервис.</p>
     </div>
     <div class="foot-col">
