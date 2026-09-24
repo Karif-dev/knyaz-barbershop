@@ -410,6 +410,105 @@ body {
   display: flex; justify-content: space-between; align-items: flex-end;
   margin-bottom: 52px; flex-wrap: wrap; gap: 24px;
 }
+/* SERVICE CARDS */
+.svc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 0;
+}
+.svc-card {
+  background: var(--bg);
+  border: 1px solid var(--border-d);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color .25s, transform .25s;
+  display: flex;
+  flex-direction: column;
+}
+.svc-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+.svc-img {
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(150deg, #111 0%, #0a0a0a 100%);
+  border-bottom: 1px solid var(--border-d);
+  flex-shrink: 0;
+}
+.svc-body {
+  padding: 20px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.svc-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.svc-desc { font-size: 13px; color: var(--text-d); line-height: 1.65; flex: 1; margin-bottom: 18px; }
+.svc-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.svc-time-badge {
+  font-size: 11px; color: var(--text-d); letter-spacing: .07em;
+  text-transform: uppercase; background: rgba(255,255,255,.05);
+  padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+}
+.svc-price-badge {
+  font-size: 22px; font-weight: 900; color: var(--gold);
+  letter-spacing: -.01em; font-family: var(--ff-head);
+}
+/* TEAM */
+.team-sec { padding: 80px 48px; background: var(--bg); }
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+  margin-top: 44px;
+}
+.team-card {
+  background: var(--surface);
+  border: 1px solid var(--border-d);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color .25s;
+}
+.team-card:hover { border-color: var(--gold); }
+.team-photo {
+  height: 300px;
+  background: linear-gradient(160deg, #1c1a15 0%, #0d0c09 60%, #0a0a0a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.team-photo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(201,162,39,.08) 0%, transparent 65%);
+}
+.team-initials {
+  font-size: 100px;
+  font-weight: 900;
+  color: var(--gold);
+  opacity: .15;
+  letter-spacing: -6px;
+  font-family: var(--ff-head);
+  line-height: 1;
+  user-select: none;
+}
+.team-info { padding: 24px 26px 28px; }
+.team-name { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 4px; font-family: var(--ff-head); }
+.team-role {
+  font-size: 11px; color: var(--gold); letter-spacing: .13em;
+  text-transform: uppercase; margin-bottom: 14px;
+}
+.team-bio { font-size: 13px; color: var(--text-d); line-height: 1.7; }
+@media(max-width:768px) {
+  .svc-grid { grid-template-columns: 1fr; gap: 14px; }
+  .svc-img { height: 110px; }
+  .team-sec { padding: 56px 24px; }
+  .team-grid { gap: 16px; }
+  .team-photo { height: 240px; }
+}
 .tabs {
   display: flex; border-bottom: 1px solid var(--border-d);
   margin-bottom: 32px; overflow-x: auto; scrollbar-width: none;
