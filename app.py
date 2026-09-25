@@ -36,7 +36,7 @@ def _update_loop():
             log.info("Yandex reviews updated successfully.")
         except Exception as exc:
             log.warning("Reviews update failed: %s", exc)
-        time.sleep(5 * 60 * 60)   # 5 hours
+        time.sleep(24 * 60 * 60)   # 24 hours
 
 
 _updater = threading.Thread(target=_update_loop, daemon=True, name="reviews-updater")
