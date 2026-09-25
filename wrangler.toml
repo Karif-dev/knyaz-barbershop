@@ -1,6 +1,0 @@
-name = "knyaz-barbershop"
-compatibility_date = "2024-09-25"
-
-[assets]
-directory = "."
-not_found_handling = "single-page-application"
