@@ -8,9 +8,10 @@ from flask import Flask, send_from_directory
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-app = Flask(__name__)
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Serve everything (index.html, logo-k.png, etc.) from the project root
+app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 
 
 @app.route('/')
@@ -18,16 +19,10 @@ def index():
     return send_from_directory(BASE_DIR, 'index.html')
 
 
-@app.route('/<path:filename>')
-def static_files(filename):
-    return send_from_directory(BASE_DIR, filename)
-
-
 # ── Background reviews updater ──────────────────────────────────────────────
 
 def _update_loop():
-    """Runs update_reviews.main() on startup and then every 5 hours."""
-    # Small delay so the server is fully up before the first fetch
+    """Runs update_reviews.main() on startup (after 10s delay) then every 24h."""
     time.sleep(10)
     while True:
         try:
