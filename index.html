@@ -446,17 +446,79 @@ body {
   display: flex; justify-content: space-between; align-items: flex-end;
   margin-bottom: 52px; flex-wrap: wrap; gap: 24px;
 }
-/* SERVICE CARDS — ui-ux-pro-max: OLED Dark, border-radius 16, contrast 4.5:1+ */
+/* SERVICE CARDS — variant 4: hit + grid */
 .svc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  margin-top: 0;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
 }
+/* Hit card */
+.svc-hit {
+  grid-row: span 2;
+  background: #0a0a0a;
+  border: 1px solid rgba(201,162,39,.3);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+.svc-hit:hover {
+  border-color: rgba(201,162,39,.55);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(201,162,39,.1);
+}
+.svc-hit-img {
+  flex: 0 0 auto;
+  height: 280px;
+  overflow: hidden;
+  background: #111;
+  position: relative;
+}
+.svc-hit-img img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  display: block;
+  transition: transform .35s cubic-bezier(.25,.46,.45,.94);
+}
+.svc-hit:hover .svc-hit-img img { transform: scale(1.04); }
+.svc-hit-body {
+  padding: 24px 28px 28px;
+  display: flex; flex-direction: column; gap: 10px; flex: 1;
+}
+.svc-hit-badge {
+  display: inline-flex; align-items: center;
+  background: var(--gold); color: #050505;
+  font-family: 'Oswald', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 20px; width: fit-content;
+}
+.svc-hit-name {
+  font-family: 'Oswald', sans-serif;
+  font-size: 22px; font-weight: 500;
+  color: #f0ede6; letter-spacing: .03em; text-transform: uppercase; line-height: 1.2;
+}
+.svc-hit-desc {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; color: rgba(240,237,230,.6);
+  line-height: 1.65; flex: 1;
+}
+.svc-hit-foot {
+  display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px;
+}
+.svc-hit-meta { display: flex; flex-direction: column; gap: 3px; }
+.svc-hit-savings { font-size: 11px; color: rgba(240,237,230,.4); text-decoration: line-through; }
+.svc-hit-price {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 32px; font-weight: 800; color: #c9a227;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+/* Small cards */
 .svc-card {
   background: #0a0a0a;
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -469,7 +531,7 @@ body {
   box-shadow: 0 8px 32px rgba(201,162,39,.08);
 }
 .svc-img {
-  height: 190px;
+  height: 140px;
   overflow: hidden;
   flex-shrink: 0;
   background: #111;
@@ -483,35 +545,35 @@ body {
 }
 .svc-card:hover .svc-img img { transform: scale(1.05); }
 .svc-body {
-  padding: 18px 20px 20px;
+  padding: 14px 16px 16px;
   display: flex; flex-direction: column; flex: 1;
 }
 .svc-title {
   font-family: 'Oswald', sans-serif;
-  font-size: 16px; font-weight: 500;
+  font-size: 13px; font-weight: 500;
   color: #f0ede6;
-  letter-spacing: .04em; text-transform: uppercase;
-  margin-bottom: 8px;
+  letter-spacing: .06em; text-transform: uppercase;
+  margin-bottom: 5px;
 }
 .svc-desc {
   font-family: 'Inter', sans-serif;
-  font-size: 13px; color: rgba(240,237,230,.65);
-  line-height: 1.7; flex: 1; margin-bottom: 16px;
+  font-size: 12px; color: rgba(240,237,230,.6);
+  line-height: 1.6; flex: 1; margin-bottom: 12px;
 }
-.svc-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.svc-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
 .svc-time-badge {
   font-family: 'Inter', sans-serif;
-  font-size: 11px; font-weight: 500;
+  font-size: 10px; font-weight: 500;
   color: rgba(240,237,230,.9);
   letter-spacing: .06em; text-transform: uppercase;
   background: rgba(255,255,255,.09);
   border: 1px solid rgba(255,255,255,.14);
-  padding: 5px 11px; border-radius: 20px;
-  white-space: nowrap; display: flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 20px;
+  white-space: nowrap; display: flex; align-items: center; gap: 4px;
 }
 .svc-price-badge {
   font-family: 'Montserrat', sans-serif;
-  font-size: 20px; font-weight: 800;
+  font-size: 17px; font-weight: 800;
   color: #c9a227;
   letter-spacing: -.01em;
   font-variant-numeric: tabular-nums;
@@ -569,8 +631,10 @@ body {
   line-height: 1.7;
 }
 @media(max-width:768px) {
-  .svc-grid { grid-template-columns: 1fr; gap: 12px; }
-  .svc-img { height: 190px; }
+  .svc-grid { grid-template-columns: 1fr; }
+  .svc-hit { grid-row: span 1; }
+  .svc-hit-img { height: 220px; }
+  .svc-img { height: 160px; }
   .team-sec { padding: 56px 24px; }
   .team-grid { grid-template-columns: 1fr; gap: 14px; }
   .team-photo { height: 240px; }
@@ -876,54 +940,55 @@ body {
     <div><p class="eyebrow">Наши услуги</p><div class="gold-bar"></div><h2 class="sec-title">Прайс-лист</h2></div>
   </div>
   <div class="svc-grid">
-    <div class="svc-card">
-      <div class="svc-img">
-        <img src="/svc1.jpg" alt="Мужская стрижка" loading="lazy">
+    <!-- Hit card: Стрижка + борода -->
+    <div class="svc-hit">
+      <div class="svc-hit-img">
+        <img src="/svc4.jpg" alt="Стрижка + борода" loading="lazy">
       </div>
+      <div class="svc-hit-body">
+        <div class="svc-hit-badge">★ Выгодно</div>
+        <div class="svc-hit-name">Стрижка<br>+ Борода</div>
+        <div class="svc-hit-desc">Полный комплекс за один визит. Стрижка и борода от одного мастера — целостный образ.</div>
+        <div class="svc-hit-foot">
+          <div class="svc-hit-meta">
+            <span class="svc-time-badge" style="font-size:10px"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>1 ч 10 мин</span>
+            <span class="svc-hit-savings">2 500 ₽ отдельно</span>
+          </div>
+          <span class="svc-hit-price">2 300 ₽</span>
+        </div>
+      </div>
+    </div>
+    <!-- Small cards -->
+    <div class="svc-card">
+      <div class="svc-img"><img src="/svc1.jpg" alt="Мужская стрижка" loading="lazy"></div>
       <div class="svc-body">
         <div class="svc-title">Мужская стрижка</div>
-        <div class="svc-desc">Классическая или авторская стрижка под ваш тип лица. Консультация, мытьё головы и укладка — всё включено.</div>
-        <div class="svc-foot"><span class="svc-time-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>40 мин</span><span class="svc-price-badge">1 500 ₽</span></div>
+        <div class="svc-desc">Классика или авторская под тип лица. Мытьё и укладка включены.</div>
+        <div class="svc-foot"><span class="svc-time-badge"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>40 мин</span><span class="svc-price-badge">1 500 ₽</span></div>
       </div>
     </div>
     <div class="svc-card">
-      <div class="svc-img">
-        <img src="/svc2.jpg" alt="Стрижка под машинку" loading="lazy">
-      </div>
+      <div class="svc-img"><img src="/svc2.jpg" alt="Стрижка под машинку" loading="lazy"></div>
       <div class="svc-body">
         <div class="svc-title">Стрижка под машинку</div>
-        <div class="svc-desc">Чёткий контур, идеальная длина. Быстро и точно — для тех, кто ценит лаконичность.</div>
-        <div class="svc-foot"><span class="svc-time-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>20 мин</span><span class="svc-price-badge">1 000 ₽</span></div>
+        <div class="svc-desc">Чёткий контур, идеальная длина. Быстро и точно.</div>
+        <div class="svc-foot"><span class="svc-time-badge"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>20 мин</span><span class="svc-price-badge">1 000 ₽</span></div>
       </div>
     </div>
     <div class="svc-card">
-      <div class="svc-img">
-        <img src="/svc3.jpg" alt="Стрижка бороды" loading="lazy">
-      </div>
+      <div class="svc-img"><img src="/svc3.jpg" alt="Стрижка бороды" loading="lazy"></div>
       <div class="svc-body">
         <div class="svc-title">Стрижка бороды</div>
-        <div class="svc-desc">Оформление и коррекция формы бороды. Мастер подберёт стиль, который подчеркнёт ваш образ.</div>
-        <div class="svc-foot"><span class="svc-time-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>30 мин</span><span class="svc-price-badge">1 000 ₽</span></div>
+        <div class="svc-desc">Оформление и коррекция формы. Мастер подберёт стиль.</div>
+        <div class="svc-foot"><span class="svc-time-badge"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>30 мин</span><span class="svc-price-badge">1 000 ₽</span></div>
       </div>
     </div>
     <div class="svc-card">
-      <div class="svc-img">
-        <img src="/svc4.jpg" alt="Стрижка + стрижка бороды" loading="lazy">
-      </div>
-      <div class="svc-body">
-        <div class="svc-title">Стрижка + стрижка бороды</div>
-        <div class="svc-desc">Полный комплекс за один визит. Стрижка и борода от одного мастера — целостный образ, выгоднее раздельно.</div>
-        <div class="svc-foot"><span class="svc-time-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>1 ч 10 мин</span><span class="svc-price-badge">2 300 ₽</span></div>
-      </div>
-    </div>
-    <div class="svc-card">
-      <div class="svc-img">
-        <img src="/svc5.jpg" alt="Воск" loading="lazy">
-      </div>
+      <div class="svc-img"><img src="/svc5.jpg" alt="Воск" loading="lazy"></div>
       <div class="svc-body">
         <div class="svc-title">Воск</div>
-        <div class="svc-desc">Укладка воском после стрижки. Чёткий, стойкий образ — штрих, который завершает образ.</div>
-        <div class="svc-foot"><span class="svc-time-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>15 мин</span><span class="svc-price-badge">400 ₽</span></div>
+        <div class="svc-desc">Укладка воском. Стойкий образ на весь день.</div>
+        <div class="svc-foot"><span class="svc-time-badge"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>15 мин</span><span class="svc-price-badge">400 ₽</span></div>
       </div>
     </div>
   </div>
