@@ -226,6 +226,10 @@ def _fetch_yclients_services():
         """Decode JSON unicode escapes \\u041c -> М inside a captured string."""
         return re.sub(r'\\u([0-9a-fA-F]{4})', lambda m: chr(int(m.group(1), 16)), s)
 
+    def _has_cyrillic(s):
+        """Return True if string contains at least one Cyrillic character."""
+        return any('Ѐ' <= c <= 'ӿ' for c in s)
+
     PRICE_KEYS = {'price_min', 'price_max', 'price', 'cost'}
 
     def _has_price_key(item):
@@ -269,6 +273,9 @@ def _fetch_yclients_services():
                 name = (item.get('title') or item.get('name') or '').strip()
                 if not name:
                     continue
+                # Skip UI strings that have no Cyrillic (language switchers, "English", etc.)
+                if not _has_cyrillic(name):
+                    continue
                 # price_min=0 means price range — fall back to price_max, then price, then cost
                 price = int(item.get('price_min') or 0)
                 if price == 0:
@@ -289,6 +296,8 @@ def _fetch_yclients_services():
         for m in re.finditer(r'"title"\s*:\s*"([^"\\]{2,100}(?:\\.[^"\\]{0,100})*)"', raw):
             raw_name = m.group(1)
             name = _decode_ue(raw_name)
+            if not _has_cyrillic(name):
+                continue
             tail = raw[m.start():m.start()+600]
             price = 0
             for pp in price_pats:
@@ -298,7 +307,8 @@ def _fetch_yclients_services():
                     if v > 0:
                         price = v
                         break
-            services.append({"name": name, "price": price})
+            if price > 0:
+                services.append({"name": name, "price": price})
         if services:
             return services
         # Reverse scan
@@ -307,7 +317,9 @@ def _fetch_yclients_services():
                 chunk = raw[max(0, m.start()-600):m.start()+100]
                 tm = re.search(r'"title"\s*:\s*"([^"\\]{2,100})"', chunk)
                 if tm:
-                    services.append({"name": _decode_ue(tm.group(1)), "price": int(m.group(1))})
+                    name = _decode_ue(tm.group(1))
+                    if _has_cyrillic(name) and int(m.group(1)) > 0:
+                        services.append({"name": name, "price": int(m.group(1))})
         return services
 
     # Strategy 1: Playwright headless browser (installed at build time via nixpacks)
