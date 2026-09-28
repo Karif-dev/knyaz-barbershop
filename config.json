@@ -24,18 +24,10 @@
     "svc4": "/upload_9a2797e6.jpg"
   },
   "services_prices": {
-    "last_sync": "2026-09-28 01:07",
+    "last_sync": "2026-09-28 01:10",
     "services": [
       {
-        "name": "Русский",
-        "price": 0
-      },
-      {
         "name": "English",
-        "price": 0
-      },
-      {
-        "name": "Услуга",
         "price": 0
       },
       {
@@ -57,10 +49,6 @@
       {
         "name": "Воск",
         "price": 400
-      },
-      {
-        "name": "Князь",
-        "price": 0
       }
     ]
   }
