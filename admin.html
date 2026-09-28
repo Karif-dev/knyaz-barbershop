@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Админка — Князь</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050505;--surface:#0d0d0d;--s2:#141414;--s3:#1a1a1a;
+  --text:#fff;--text-m:#888;--text-d:rgba(255,255,255,.35);
+  --border:rgba(255,255,255,.1);--border-h:rgba(255,255,255,.2);
+  --gold:#c9a227;--err:#e53;--ok:#2d9;
+  color-scheme:dark
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:'Inter',sans-serif}
+input,textarea,select{font-family:'Inter',sans-serif}
+
+/* ── Layout ── */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:10}
+.main{margin-left:220px;flex:1;min-height:100vh;padding:32px}
+
+/* ── Sidebar ── */
+.sb-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.sb-k{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--gold);letter-spacing:.08em}
+.sb-label{font-size:10px;color:var(--text-m);letter-spacing:.15em;text-transform:uppercase;margin-top:3px}
+.sb-nav{flex:1;padding:12px 8px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:var(--text-m);transition:all .2s;cursor:pointer;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-size:13.5px}
+.sb-item svg{opacity:.6;flex-shrink:0}
+.sb-item:hover{background:var(--s2);color:var(--text)}
+.sb-item.active{background:var(--gold);color:#000 !important;font-weight:600}
+.sb-item.active svg{opacity:1}
+.sb-bottom{padding:12px 8px;border-top:1px solid var(--border)}
+
+/* ── Top bar ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.page-title{font-size:24px;font-weight:700}
+.publish-btn{background:var(--gold);color:#000;border:none;border-radius:10px;padding:11px 22px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;transition:opacity .2s}
+.publish-btn:hover{opacity:.85}
+.publish-btn.loading{opacity:.6;pointer-events:none}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:28px;right:28px;background:var(--s3);border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:13.5px;opacity:0;transform:translateY(10px);transition:all .3s;z-index:999;max-width:320px}
+.toast.show{opacity:1;transform:none}
+.toast.ok{border-color:var(--ok);color:var(--ok)}
+.toast.err{border-color:var(--err);color:var(--err)}
+
+/* ── Tab content ── */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* ── Section card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px}
+.card+.card{margin-top:16px}
+.card-title{font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-m);margin-bottom:20px;display:flex;align-items:center;gap:8px}
+
+/* ── Gallery ── */
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.gal-item{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--s2);border:1px solid var(--border);cursor:grab}
+.gal-item:active{cursor:grabbing}
+.gal-item img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.gal-item .del-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border:none;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;opacity:0;transition:opacity .2s;backdrop-filter:blur(4px)}
+.gal-item:hover .del-btn{opacity:1}
+.gal-item .drag-handle{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);border-radius:6px;padding:3px 5px;opacity:0;transition:opacity .2s}
+.gal-item:hover .drag-handle{opacity:1}
+.gal-item.drag-over{outline:2px solid var(--gold);outline-offset:-2px}
+.gal-add{aspect-ratio:1;background:var(--s2);border:2px dashed var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:8px;color:var(--text-m);transition:all .2s}
+.gal-add:hover{border-color:var(--gold);color:var(--gold)}
+.gal-add svg{opacity:.5}
+
+/* ── Team ── */
+.team-list{display:flex;flex-direction:column;gap:12px}
+.member-card{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:flex-start;gap:16px}
+.member-photo{width:60px;height:60px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--s3)}
+.member-photo-wrap{position:relative;flex-shrink:0}
+.member-photo-edit{position:absolute;inset:0;background:rgba(0,0,0,.6);border-radius:10px;display:flex;align-items:center;justify-content:center;opacity:0;cursor:pointer;transition:opacity .2s}
+.member-photo-wrap:hover .member-photo-edit{opacity:1}
+.member-fields{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.member-fields .full{grid-column:1/-1}
+.member-actions{display:flex;gap:8px;flex-shrink:0;margin-top:4px}
+.field-group{display:flex;flex-direction:column;gap:5px}
+.field-label{font-size:11px;color:var(--text-m);text-transform:uppercase;letter-spacing:.08em}
+.field-input{background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13.5px;outline:none;transition:border-color .2s;width:100%}
+.field-input:focus{border-color:var(--gold)}
+textarea.field-input{resize:vertical;min-height:70px}
+.icon-btn{background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text-m);display:flex;align-items:center;gap:6px;font-size:13px;transition:all .2s}
+.icon-btn:hover{border-color:var(--border-h);color:var(--text)}
+.icon-btn.danger:hover{border-color:var(--err);color:var(--err)}
+.add-member-btn{background:transparent;border:2px dashed var(--border);border-radius:12px;padding:16px;width:100%;color:var(--text-m);font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+.add-member-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ── Service images ── */
+.svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.svc-item{background:var(--s2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.svc-img-wrap{position:relative;aspect-ratio:16/9;background:var(--s3)}
+.svc-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.svc-img-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;cursor:pointer}
+.svc-img-wrap:hover .svc-img-overlay{opacity:1}
+.svc-info{padding:12px 14px}
+.svc-name{font-size:13px;font-weight:600}
+.svc-img-label{font-size:11px;color:var(--text-m);margin-top:2px}
+
+/* ── Prices ── */
+.prices-table{width:100%;border-collapse:collapse}
+.prices-table th{text-align:left;font-size:11px;color:var(--text-m);text-transform:uppercase;letter-spacing:.08em;padding:8px 12px;border-bottom:1px solid var(--border)}
+.prices-table td{padding:12px;border-bottom:1px solid var(--border);font-size:13.5px}
+.prices-table tr:last-child td{border-bottom:none}
+.price-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13.5px;width:100px;outline:none}
+.price-input:focus{border-color:var(--gold)}
+.sync-status{font-size:12px;color:var(--text-m);margin-top:8px}
+.sync-btn{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;color:var(--text);font-size:13.5px;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+.sync-btn:hover{border-color:var(--gold);color:var(--gold)}
+.sync-btn.loading{opacity:.5;pointer-events:none}
+
+/* ── Settings ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.settings-section{display:flex;flex-direction:column;gap:10px}
+.settings-section .field-label{margin-bottom:2px}
+.save-pw-btn{background:var(--gold);color:#000;border:none;border-radius:8px;padding:10px 18px;font-size:13.5px;font-weight:600;margin-top:4px;transition:opacity .2s}
+.save-pw-btn:hover{opacity:.85}
+.github-note{font-size:12px;color:var(--text-m);line-height:1.7;padding:14px;background:var(--s2);border-radius:10px;border:1px solid var(--border);margin-top:8px}
+.github-note code{background:var(--s3);border-radius:4px;padding:1px 5px;font-size:11px;color:var(--gold)}
+
+/* ── Upload area ── */
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;color:var(--text-m);transition:all .2s;cursor:pointer}
+.drop-zone.active,.drop-zone:hover{border-color:var(--gold);color:var(--gold)}
+.drop-zone input[type=file]{display:none}
+
+/* ── Spinner ── */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.15);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:640px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:20px}
+  .settings-grid{grid-template-columns:1fr}
+  .member-fields{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-k">КНЯЗЬ</div>
+    <div class="sb-label">Управление сайтом</div>
+  </div>
+  <nav class="sb-nav">
+    <button class="sb-item active" onclick="switchTab('gallery', this)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Галерея
+    </button>
+    <button class="sb-item" onclick="switchTab('team', this)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M19 11c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/><path d="M22 21v-1a3 3 0 0 0-3-3h-1"/></svg>
+      Команда
+    </button>
+    <button class="sb-item" onclick="switchTab('services', this)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Услуги — фото
+    </button>
+    <button class="sb-item" onclick="switchTab('prices', this)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+      Цены (YClients)
+    </button>
+    <button class="sb-item" onclick="switchTab('settings', this)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Настройки
+    </button>
+  </nav>
+  <div class="sb-bottom">
+    <a href="/" target="_blank" class="sb-item" style="margin:0">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Открыть сайт
+    </a>
+    <button class="sb-item" style="margin-top:4px;color:var(--err)" onclick="logout()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Выйти
+    </button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="page-title" id="page-title">Галерея</div>
+    <button class="publish-btn" id="pub-btn" onclick="publishAll()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+      Сохранить и опубликовать
+    </button>
+  </div>
+
+  <!-- ── GALLERY TAB ── -->
+  <div class="tab-content active" id="tab-gallery">
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 5-5 4 4 3-3 6 6"/></svg>
+        Фотографии галереи
+        <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text-m)" id="gal-count"></span>
+      </div>
+      <div class="gal-grid" id="gal-grid">
+        <!-- populated by JS -->
+      </div>
+      <div style="margin-top:16px">
+        <div class="drop-zone" id="gal-drop" onclick="document.getElementById('gal-file').click()">
+          <input type="file" id="gal-file" accept="image/*" multiple onchange="uploadGallery(this.files)">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="font-size:14px;margin-top:4px">Загрузить фото</div>
+          <div style="font-size:12px;margin-top:2px">JPG, PNG, WebP · перетащите или кликните</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <p style="font-size:12px;color:var(--text-m);line-height:1.7">
+        💡 Перетащите карточки для изменения порядка.<br>
+        Нажмите × чтобы удалить фото.<br>
+        Нажмите <strong>Сохранить и опубликовать</strong> — изменения появятся на сайте через ~2 мин.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── TEAM TAB ── -->
+  <div class="tab-content" id="tab-team">
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+        Мастера барбершопа
+      </div>
+      <div class="team-list" id="team-list"><!-- populated by JS --></div>
+      <button class="add-member-btn" style="margin-top:14px" onclick="addMember()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Добавить мастера
+      </button>
+    </div>
+  </div>
+
+  <!-- ── SERVICES TAB ── -->
+  <div class="tab-content" id="tab-services">
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        Изображения услуг
+      </div>
+      <div class="svc-grid" id="svc-grid"><!-- populated by JS --></div>
+    </div>
+  </div>
+
+  <!-- ── PRICES TAB ── -->
+  <div class="tab-content" id="tab-prices">
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Синхронизация с YClients
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="sync-btn" id="sync-btn" onclick="syncYclients()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Синхронизировать сейчас
+        </button>
+        <span class="sync-status" id="sync-status">Загрузка...</span>
+      </div>
+      <div id="prices-table-wrap">
+        <p style="color:var(--text-m);font-size:13px">Нажмите «Синхронизировать» чтобы загрузить актуальные цены из YClients.<br>Также цены обновляются автоматически раз в сутки.</p>
+      </div>
+    </div>
+    <div class="card">
+      <p style="font-size:12px;color:var(--text-m);line-height:1.8">
+        ℹ️ Цены загружаются со страницы виджета записи YClients.<br>
+        Если цены не найдены — они могут быть скрыты в виджете. В таком случае используйте ручное редактирование через YClients.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS TAB ── -->
+  <div class="tab-content" id="tab-settings">
+    <div class="settings-grid">
+      <div class="card">
+        <div class="card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Пароль входа
+        </div>
+        <div class="settings-section">
+          <div class="field-group">
+            <div class="field-label">Новый пароль</div>
+            <input type="password" class="field-input" id="new-pw" placeholder="Введите новый пароль">
+          </div>
+          <div class="field-group">
+            <div class="field-label">Повторите пароль</div>
+            <input type="password" class="field-input" id="new-pw2" placeholder="Повторите пароль">
+          </div>
+          <button class="save-pw-btn" onclick="changePassword()">Сменить пароль</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          GitHub и деплой
+        </div>
+        <div class="github-note">
+          Публикация на сайте работает через Railway автодеплой из GitHub.<br><br>
+          Необходимые переменные в Railway:<br>
+          <code>GITHUB_TOKEN</code> — токен с доступом к репо<br>
+          <code>GITHUB_REPO</code> — <code>Karif-dev/knyaz-barbershop</code><br>
+          <code>GITHUB_BRANCH</code> — <code>main</code><br>
+          <code>SECRET_KEY</code> — любая случайная строка<br><br>
+          После сохранения изменений Railway перезапускается (~2 мин) и обновления появляются на сайте.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Hidden file inputs for service images -->
+<input type="file" id="svc-file-input" accept="image/*" style="display:none" onchange="handleSvcUpload(this)">
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let cfg = {gallery:[], team:[], service_images:{}, services_prices:{last_sync:null, services:[]}};
+let pendingSvcKey = null;
+const SVC_LABELS = {
+  hit: 'Стрижка + Борода (хит)',
+  svc1: 'Мужская стрижка',
+  svc2: 'Стрижка под машинку',
+  svc3: 'Стрижка бороды',
+  svc4: 'Воск'
+};
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const r = await fetch('/admin/api/config');
+    if (r.status === 401) { window.location = '/admin/login'; return; }
+    cfg = await r.json();
+    renderGallery();
+    renderTeam();
+    renderServices();
+    renderPrices();
+  } catch(e) { toast('Ошибка загрузки конфига', 'err'); }
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+const TAB_TITLES = {gallery:'Галерея', team:'Команда', services:'Услуги — фото', prices:'Цены (YClients)', settings:'Настройки'};
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('page-title').textContent = TAB_TITLES[name] || name;
+}
+
+// ── Gallery ────────────────────────────────────────────────────────────────
+function renderGallery() {
+  const grid = document.getElementById('gal-grid');
+  const count = document.getElementById('gal-count');
+  grid.innerHTML = '';
+  count.textContent = cfg.gallery.length + ' фото';
+  cfg.gallery.forEach((url, i) => {
+    const item = document.createElement('div');
+    item.className = 'gal-item';
+    item.draggable = true;
+    item.dataset.index = i;
+    item.innerHTML = `
+      <img src="${url}" alt="" onerror="this.style.opacity='0.2'">
+      <span class="drag-handle" title="Перетащить">
+        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16" opacity=".7"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+      </span>
+      <button class="del-btn" onclick="delGal(${i})" title="Удалить">×</button>
+    `;
+    // Drag events
+    item.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', i); item.style.opacity = '.4'; });
+    item.addEventListener('dragend', e => { item.style.opacity = '1'; grid.querySelectorAll('.gal-item').forEach(el => el.classList.remove('drag-over')); });
+    item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('drag-over'); });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      const from = parseInt(e.dataTransfer.getData('text/plain'));
+      const to = parseInt(item.dataset.index);
+      if (from !== to) {
+        const arr = [...cfg.gallery];
+        arr.splice(to, 0, arr.splice(from, 1)[0]);
+        cfg.gallery = arr;
+        renderGallery();
+      }
+    });
+    grid.appendChild(item);
+  });
+}
+
+function delGal(i) {
+  cfg.gallery.splice(i, 1);
+  renderGallery();
+}
+
+async function uploadGallery(files) {
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const r = await fetch('/admin/api/upload', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.ok) {
+        cfg.gallery.push(d.url);
+        renderGallery();
+      } else {
+        toast(d.error || 'Ошибка загрузки', 'err');
+      }
+    } catch(e) { toast('Ошибка сети', 'err'); }
+  }
+}
+
+// Drag & drop on drop zone
+const dz = document.getElementById('gal-drop');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('active'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('active'); uploadGallery(e.dataTransfer.files); });
+
+// ── Team ───────────────────────────────────────────────────────────────────
+function renderTeam() {
+  const list = document.getElementById('team-list');
+  list.innerHTML = '';
+  cfg.team.forEach((m, i) => {
+    const div = document.createElement('div');
+    div.className = 'member-card';
+    div.dataset.index = i;
+    div.innerHTML = `
+      <div class="member-photo-wrap" onclick="uploadMemberPhoto(${i})">
+        <img class="member-photo" src="${m.photo || '/dima.jpg'}" alt="">
+        <div class="member-photo-edit">
+          <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+      </div>
+      <div class="member-fields">
+        <div class="field-group">
+          <div class="field-label">Имя</div>
+          <input class="field-input" value="${esc(m.name)}" onchange="cfg.team[${i}].name=this.value" placeholder="Имя мастера">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Должность</div>
+          <input class="field-input" value="${esc(m.role)}" onchange="cfg.team[${i}].role=this.value" placeholder="Мастер барбер">
+        </div>
+        <div class="field-group full">
+          <div class="field-label">О мастере</div>
+          <textarea class="field-input" onchange="cfg.team[${i}].bio=this.value" placeholder="Несколько слов о мастере...">${esc(m.bio)}</textarea>
+        </div>
+      </div>
+      <div class="member-actions">
+        <button class="icon-btn danger" onclick="delMember(${i})" title="Удалить">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function addMember() {
+  cfg.team.push({ id: Date.now(), name: '', role: 'Мастер барбер', bio: '', photo: '/dima.jpg', photo_position: '50% 18%' });
+  renderTeam();
+}
+
+function delMember(i) {
+  if (!confirm('Удалить мастера?')) return;
+  cfg.team.splice(i, 1);
+  renderTeam();
+}
+
+let pendingMemberPhotoIndex = null;
+function uploadMemberPhoto(i) {
+  pendingMemberPhotoIndex = i;
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.onchange = async function() {
+    const fd = new FormData();
+    fd.append('file', this.files[0]);
+    const r = await fetch('/admin/api/upload', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      cfg.team[pendingMemberPhotoIndex].photo = d.url;
+      renderTeam();
+    }
+  };
+  inp.click();
+}
+
+// ── Services ───────────────────────────────────────────────────────────────
+function renderServices() {
+  const grid = document.getElementById('svc-grid');
+  grid.innerHTML = '';
+  Object.entries(SVC_LABELS).forEach(([key, label]) => {
+    const imgUrl = (cfg.service_images || {})[key] || '/svc1.jpg';
+    const div = document.createElement('div');
+    div.className = 'svc-item';
+    div.innerHTML = `
+      <div class="svc-img-wrap" onclick="openSvcUpload('${key}')">
+        <img src="${imgUrl}" alt="${label}" onerror="this.style.opacity='0.2'">
+        <div class="svc-img-overlay">
+          <svg width="28" height="28" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+      </div>
+      <div class="svc-info">
+        <div class="svc-name">${label}</div>
+        <div class="svc-img-label">Нажмите чтобы изменить фото</div>
+      </div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function openSvcUpload(key) {
+  pendingSvcKey = key;
+  document.getElementById('svc-file-input').click();
+}
+
+async function handleSvcUpload(input) {
+  if (!input.files[0] || !pendingSvcKey) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  const r = await fetch('/admin/api/upload', { method: 'POST', body: fd });
+  const d = await r.json();
+  if (d.ok) {
+    if (!cfg.service_images) cfg.service_images = {};
+    cfg.service_images[pendingSvcKey] = d.url;
+    renderServices();
+    toast('Фото обновлено. Нажмите «Сохранить и опубликовать»', 'ok');
+  } else {
+    toast(d.error || 'Ошибка загрузки', 'err');
+  }
+  input.value = '';
+}
+
+// ── Prices ─────────────────────────────────────────────────────────────────
+function renderPrices() {
+  const sp = cfg.services_prices || {};
+  const status = document.getElementById('sync-status');
+  if (sp.last_sync) {
+    status.textContent = 'Последняя синхронизация: ' + sp.last_sync;
+  } else {
+    status.textContent = 'Синхронизация не проводилась';
+  }
+  const wrap = document.getElementById('prices-table-wrap');
+  const services = sp.services || [];
+  if (services.length === 0) {
+    wrap.innerHTML = '<p style="color:var(--text-m);font-size:13px">Нажмите «Синхронизировать» чтобы загрузить актуальные цены из YClients.<br>Также цены обновляются автоматически раз в сутки.</p>';
+    return;
+  }
+  let html = '<table class="prices-table"><thead><tr><th>Услуга</th><th>Цена (₽)</th></tr></thead><tbody>';
+  services.forEach(s => {
+    html += `<tr><td>${esc(s.name)}</td><td><input class="price-input" type="number" value="${s.price}" readonly></td></tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+async function syncYclients() {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spin"></span> Синхронизирую...';
+  const status = document.getElementById('sync-status');
+  status.textContent = 'Загружаю данные с YClients...';
+  try {
+    const r = await fetch('/admin/api/sync-yclients', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      cfg.services_prices = { last_sync: new Date().toLocaleString('ru'), services: d.services };
+      renderPrices();
+      toast(`Загружено ${d.count} услуг из YClients`, 'ok');
+    } else {
+      toast(d.error || 'Не удалось получить данные', 'err');
+      status.textContent = 'Ошибка синхронизации';
+    }
+  } catch(e) { toast('Ошибка сети', 'err'); }
+  btn.classList.remove('loading');
+  btn.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Синхронизировать сейчас';
+}
+
+// ── Publish ────────────────────────────────────────────────────────────────
+async function publishAll() {
+  const btn = document.getElementById('pub-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spin" style="border-top-color:#000"></span> Публикую...';
+  try {
+    const r = await fetch('/admin/api/save', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ gallery: cfg.gallery, team: cfg.team, service_images: cfg.service_images })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(d.pushed ? '✓ Сохранено и отправлено в GitHub. Сайт обновится через ~2 мин.' : '✓ Сохранено локально (GitHub не настроен)', 'ok');
+    } else {
+      toast(d.error || 'Ошибка сохранения', 'err');
+    }
+  } catch(e) { toast('Ошибка сети', 'err'); }
+  btn.classList.remove('loading');
+  btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg> Сохранить и опубликовать';
+}
+
+// ── Password change ────────────────────────────────────────────────────────
+async function changePassword() {
+  const p1 = document.getElementById('new-pw').value;
+  const p2 = document.getElementById('new-pw2').value;
+  if (!p1) { toast('Введите пароль', 'err'); return; }
+  if (p1 !== p2) { toast('Пароли не совпадают', 'err'); return; }
+  const r = await fetch('/admin/api/save', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ new_password: p1 })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast('Пароль изменён', 'ok');
+    document.getElementById('new-pw').value = '';
+    document.getElementById('new-pw2').value = '';
+  } else toast(d.error || 'Ошибка', 'err');
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type||'');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function logout() { window.location = '/admin/logout'; }
+
+// ── Run ────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
