@@ -209,81 +209,93 @@ def _fetch_yclients_services():
     ctx = ssl.create_default_context()
     ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
 
-    # Strategy 1: YClients public booking API (returns JSON directly)
-    api_urls = [
+    def _extract_services_from_html(html):
+        """Extract service names and prices from any HTML/JS content."""
+        services = []
+        # Pattern 1: "title":"...", look forward for price_min
+        for m in re.finditer(r'"title"\s*:\s*"([^"]{2,80})"', html):
+            tail = html[m.start():m.start()+400]
+            pm = re.search(r'"price_min"\s*:\s*(\d+)', tail)
+            if pm and int(pm.group(1)) > 0:
+                services.append({"name": m.group(1), "price": int(pm.group(1))})
+        if services:
+            return services
+        # Pattern 2: look backward from price_min to title
+        for m in re.finditer(r'"price_min"\s*:\s*(\d+)', html):
+            if int(m.group(1)) == 0:
+                continue
+            chunk = html[max(0, m.start()-400):m.start()+100]
+            tm = re.search(r'"title"\s*:\s*"([^"]{2,80})"', chunk)
+            if tm:
+                services.append({"name": tm.group(1), "price": int(m.group(1))})
+        return services
+
+    def _dedupe(services):
+        seen = set(); out = []
+        for s in services:
+            if s['name'] not in seen:
+                seen.add(s['name']); out.append(s)
+        return out
+
+    # Strategy 1: Public company services API (sometimes unauthenticated)
+    json_api_urls = [
+        "https://api.yclients.com/api/v1/company/2188101/services/?count=200&active=1",
         "https://api.yclients.com/api/v1/book_services/2527773/?show_all=1",
         "https://api.yclients.com/api/v1/book_services/2527773/",
     ]
-    for api_url in api_urls:
+    for api_url in json_api_urls:
         try:
             req = urllib.request.Request(api_url, headers={
                 "User-Agent": ua,
                 "Accept": "application/json",
                 "Accept-Language": "ru-RU,ru;q=0.9",
+                "Origin": "https://n2527773.yclients.ru",
+                "Referer": "https://n2527773.yclients.ru/",
             })
-            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
-                data = _json.loads(resp.read().decode('utf-8', errors='ignore'))
-            # Response shape: {"success": true, "data": [...]} or list
+            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+                raw = resp.read().decode('utf-8', errors='ignore')
+            data = _json.loads(raw)
             rows = data.get('data', data) if isinstance(data, dict) else data
             services = []
             if isinstance(rows, list):
                 for item in rows:
                     if isinstance(item, dict):
-                        name = item.get('title') or item.get('name') or ''
-                        price = item.get('price_min') or item.get('price') or 0
-                        if name and price:
+                        name = (item.get('title') or item.get('name') or '').strip()
+                        price = item.get('price_min') or item.get('price') or item.get('cost') or 0
+                        if name and price and int(price) > 0:
                             services.append({"name": name, "price": int(price)})
+            if not services:
+                # Try extracting from raw JSON string
+                services = _extract_services_from_html(raw)
             if services:
-                return services
+                log.info("YClients: got %d services from %s", len(services), api_url)
+                return _dedupe(services)
         except Exception as e:
-            log.debug("YClients API %s failed: %s", api_url, e)
+            log.debug("YClients JSON API %s failed: %s", api_url, e)
 
-    # Strategy 2: scrape the category/service selection page (static-ish HTML)
+    # Strategy 2: Scrape widget/booking pages — look for inline JSON in <script> tags
     scrape_urls = [
         "https://n2527773.yclients.ru/company/2188101/select-service?iframe=1&lang=ru-RU",
-        "https://n2527773.yclients.ru/company/2188101/menu?lang=ru-RU",
+        "https://n2527773.yclients.ru/company/2188101/",
+        "https://n2527773.yclients.ru/",
     ]
     for url in scrape_urls:
         try:
             req = urllib.request.Request(url, headers={
                 "User-Agent": ua,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
                 "Accept-Language": "ru-RU,ru;q=0.9",
             })
-            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
                 html = resp.read().decode('utf-8', errors='ignore')
-
-            services = []
-            # Pattern 1: "title":"...", ... "price_min":NNN
-            for m in re.finditer(r'"title"\s*:\s*"([^"]{2,80})"', html):
-                # look for price_min nearby (within 300 chars)
-                tail = html[m.start():m.start()+300]
-                pm = re.search(r'"price_min"\s*:\s*(\d+)', tail)
-                if pm and int(pm.group(1)) > 0:
-                    services.append({"name": m.group(1), "price": int(pm.group(1))})
-
-            # Pattern 2: "price_min":NNN, ... "title":"..."
-            if not services:
-                for m in re.finditer(r'"price_min"\s*:\s*(\d+)', html):
-                    if int(m.group(1)) == 0:
-                        continue
-                    tail = html[max(0, m.start()-300):m.start()+300]
-                    tm = re.search(r'"title"\s*:\s*"([^"]{2,80})"', tail)
-                    if tm:
-                        services.append({"name": tm.group(1), "price": int(m.group(1))})
-
+            services = _extract_services_from_html(html)
             if services:
-                # Deduplicate by name
-                seen = set()
-                uniq = []
-                for s in services:
-                    if s['name'] not in seen:
-                        seen.add(s['name'])
-                        uniq.append(s)
-                return uniq
+                log.info("YClients: got %d services by scraping %s", len(services), url)
+                return _dedupe(services)
         except Exception as e:
             log.debug("YClients scrape %s failed: %s", url, e)
 
+    log.warning("YClients: all strategies exhausted, no services found")
     return []
 
 
@@ -294,8 +306,14 @@ def admin_sync_yclients():
     try:
         services = _fetch_yclients_services()
         if not services:
-            return jsonify({'ok': False, 'error': 'Не удалось получить данные с YClients. '
-                            'Возможно, сервис временно недоступен. Попробуйте позже.'})
+            return jsonify({
+                'ok': False,
+                'error': (
+                    'YClients не вернул данные — виджет использует JavaScript-рендеринг, '
+                    'и серверный запрос не получает цены. '
+                    'Введите прайс-лист вручную в таблице ниже и нажмите «Сохранить прайс».'
+                )
+            })
 
         cfg = load_config()
         cfg['services_prices'] = {
@@ -308,6 +326,39 @@ def admin_sync_yclients():
     except Exception as e:
         log.error("YClients sync error: %s", e)
         return jsonify({'ok': False, 'error': str(e)})
+
+
+@app.route('/admin/api/save-prices', methods=['POST'])
+@admin_required
+def admin_save_prices():
+    """Manually save price list (name + price pairs)."""
+    data = request.get_json() or {}
+    services = data.get('services', [])
+    if not isinstance(services, list):
+        return jsonify({'ok': False, 'error': 'bad data'}), 400
+
+    # Validate and clean
+    clean = []
+    for s in services:
+        name = str(s.get('name', '')).strip()
+        try:
+            price = int(s.get('price', 0))
+        except (ValueError, TypeError):
+            price = 0
+        if name and price > 0:
+            clean.append({"name": name, "price": price})
+
+    if not clean:
+        return jsonify({'ok': False, 'error': 'Нет данных для сохранения'}), 400
+
+    cfg = load_config()
+    cfg['services_prices'] = {
+        "last_sync": time.strftime("%Y-%m-%d %H:%M") + " (ручной ввод)",
+        "services": clean
+    }
+    save_config(cfg)
+    push_to_github(CONFIG_FILE, "admin: manual price list update")
+    return jsonify({'ok': True, 'count': len(clean)})
 
 # ── Service image download (startup) ─────────────────────────────────────────
 
