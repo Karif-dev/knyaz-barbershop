@@ -17,11 +17,11 @@
     }
   ],
   "service_images": {
-    "hit": "/svc4.jpg",
-    "svc1": "/svc1.jpg",
-    "svc2": "/svc2.jpg",
-    "svc3": "/svc3.jpg",
-    "svc4": "/svc5.jpg"
+    "hit": "/upload_c645997c.jpg",
+    "svc1": "/upload_79f0c028.jpg",
+    "svc2": "/upload_f32d5365.jpg",
+    "svc3": "/upload_3bf1ea17.jpg",
+    "svc4": "/upload_9a2797e6.jpg"
   },
   "services_prices": {
     "last_sync": "2026-09-28 00:44",
