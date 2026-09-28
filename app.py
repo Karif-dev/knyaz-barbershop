@@ -226,22 +226,33 @@ def _fetch_yclients_services():
         """Decode JSON unicode escapes \\u041c -> М inside a captured string."""
         return re.sub(r'\\u([0-9a-fA-F]{4})', lambda m: chr(int(m.group(1), 16)), s)
 
-    def _extract_rows(data):
-        """Recursively find a list of service-like dicts in a parsed JSON structure."""
-        if isinstance(data, list):
-            if data and isinstance(data[0], dict) and ('title' in data[0] or 'name' in data[0]):
+    PRICE_KEYS = {'price_min', 'price_max', 'price', 'cost'}
+
+    def _has_price_key(item):
+        return isinstance(item, dict) and bool(PRICE_KEYS & set(item.keys()))
+
+    def _extract_rows(data, depth=0):
+        """Recursively find a list of service dicts that have price fields."""
+        if depth > 6:
+            return []
+        if isinstance(data, list) and data:
+            # Must have title/name AND at least one item with a price key
+            sample = data[:5]
+            has_name = any(isinstance(i, dict) and ('title' in i or 'name' in i) for i in sample)
+            has_price = any(_has_price_key(i) for i in sample)
+            if has_name and has_price:
                 return data
         if isinstance(data, dict):
-            # Try common YClients keys first
-            for key in ('data', 'services', 'items', 'result'):
+            # Prioritised keys
+            for key in ('data', 'services', 'items', 'result', 'records'):
                 v = data.get(key)
                 if v is not None:
-                    rows = _extract_rows(v)
+                    rows = _extract_rows(v, depth+1)
                     if rows:
                         return rows
-            # Fallback: first list value that looks like services
+            # Fallback: any value
             for v in data.values():
-                rows = _extract_rows(v)
+                rows = _extract_rows(v, depth+1)
                 if rows:
                     return rows
         return []
