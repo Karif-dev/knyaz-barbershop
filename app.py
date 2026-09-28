@@ -262,8 +262,10 @@ def _fetch_yclients_services():
                 price = int(item.get('price_min') or 0)
                 if price == 0:
                     price = int(item.get('price_max') or item.get('price') or item.get('cost') or 0)
-                # Keep ALL named services (price=0 shown as 0 so admin can fill manually)
-                services.append({"name": name, "price": price})
+                # Only keep items that have a real price — filters out page UI elements
+                # (language switchers, category headers, shop names, etc. have no price)
+                if price > 0:
+                    services.append({"name": name, "price": price})
             if services:
                 return services
         except Exception:
@@ -315,7 +317,11 @@ def _fetch_yclients_services():
                 try:
                     if resp.status == 200 and 'yclients' in resp.url:
                         ct = resp.headers.get('content-type', '')
-                        if 'json' in ct:
+                        url = resp.url
+                        # Only parse responses likely to contain service data
+                        if 'json' in ct and any(k in url for k in (
+                            'service', 'book', 'price', 'staff', 'category'
+                        )):
                             svcs = _parse_content(resp.text())
                             if svcs:
                                 captured.extend(svcs)
