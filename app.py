@@ -203,32 +203,15 @@ def admin_upload():
     return jsonify({'ok': True, 'url': f'/{filename}', 'filename': filename})
 
 def _fetch_yclients_services():
-    """Try multiple strategies to get services+prices from YClients."""
+    """
+    Fetch services + prices from YClients.
+    Primary source: https://n2527773.yclients.ru/company/2188101/personal/select-services?o=m-1
+    Falls back to other booking API endpoints.
+    """
     import re
     import json as _json
     ctx = ssl.create_default_context()
     ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-
-    def _extract_services_from_html(html):
-        """Extract service names and prices from any HTML/JS content."""
-        services = []
-        # Pattern 1: "title":"...", look forward for price_min
-        for m in re.finditer(r'"title"\s*:\s*"([^"]{2,80})"', html):
-            tail = html[m.start():m.start()+400]
-            pm = re.search(r'"price_min"\s*:\s*(\d+)', tail)
-            if pm and int(pm.group(1)) > 0:
-                services.append({"name": m.group(1), "price": int(pm.group(1))})
-        if services:
-            return services
-        # Pattern 2: look backward from price_min to title
-        for m in re.finditer(r'"price_min"\s*:\s*(\d+)', html):
-            if int(m.group(1)) == 0:
-                continue
-            chunk = html[max(0, m.start()-400):m.start()+100]
-            tm = re.search(r'"title"\s*:\s*"([^"]{2,80})"', chunk)
-            if tm:
-                services.append({"name": tm.group(1), "price": int(m.group(1))})
-        return services
 
     def _dedupe(services):
         seen = set(); out = []
@@ -237,26 +220,13 @@ def _fetch_yclients_services():
                 seen.add(s['name']); out.append(s)
         return out
 
-    # Strategy 1: Public company services API (sometimes unauthenticated)
-    json_api_urls = [
-        "https://api.yclients.com/api/v1/company/2188101/services/?count=200&active=1",
-        "https://api.yclients.com/api/v1/book_services/2527773/?show_all=1",
-        "https://api.yclients.com/api/v1/book_services/2527773/",
-    ]
-    for api_url in json_api_urls:
+    def _parse_json_blob(raw):
+        """Try to parse services from any JSON string or JSON embedded in HTML."""
+        services = []
+        # Try whole string as JSON first
         try:
-            req = urllib.request.Request(api_url, headers={
-                "User-Agent": ua,
-                "Accept": "application/json",
-                "Accept-Language": "ru-RU,ru;q=0.9",
-                "Origin": "https://n2527773.yclients.ru",
-                "Referer": "https://n2527773.yclients.ru/",
-            })
-            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
-                raw = resp.read().decode('utf-8', errors='ignore')
             data = _json.loads(raw)
             rows = data.get('data', data) if isinstance(data, dict) else data
-            services = []
             if isinstance(rows, list):
                 for item in rows:
                     if isinstance(item, dict):
@@ -264,38 +234,115 @@ def _fetch_yclients_services():
                         price = item.get('price_min') or item.get('price') or item.get('cost') or 0
                         if name and price and int(price) > 0:
                             services.append({"name": name, "price": int(price)})
-            if not services:
-                # Try extracting from raw JSON string
-                services = _extract_services_from_html(raw)
             if services:
-                log.info("YClients: got %d services from %s", len(services), api_url)
-                return _dedupe(services)
-        except Exception as e:
-            log.debug("YClients JSON API %s failed: %s", api_url, e)
+                return services
+        except Exception:
+            pass
 
-    # Strategy 2: Scrape widget/booking pages — look for inline JSON in <script> tags
-    scrape_urls = [
+        # Regex patterns on raw string (works on both JSON and HTML with embedded JSON)
+        # Pattern A: "title":"NAME" followed by "price_min":NUM within 500 chars
+        for m in re.finditer(r'"title"\s*:\s*"([^"]{2,100})"', raw):
+            tail = raw[m.start():m.start()+500]
+            pm = re.search(r'"price_min"\s*:\s*(\d+)', tail)
+            if pm and int(pm.group(1)) > 0:
+                services.append({"name": m.group(1), "price": int(pm.group(1))})
+        if services:
+            return services
+
+        # Pattern B: "price_min":NUM near "title":"NAME"
+        for m in re.finditer(r'"price_min"\s*:\s*(\d+)', raw):
+            if int(m.group(1)) == 0:
+                continue
+            chunk = raw[max(0, m.start()-500):m.start()+100]
+            tm = re.search(r'"title"\s*:\s*"([^"]{2,100})"', chunk)
+            if tm:
+                services.append({"name": tm.group(1), "price": int(m.group(1))})
+        return services
+
+    def _fetch_url(url, accept='text/html'):
+        req = urllib.request.Request(url, headers={
+            "User-Agent": ua,
+            "Accept": accept,
+            "Accept-Language": "ru-RU,ru;q=0.9",
+            "Referer": "https://n2527773.yclients.ru/",
+        })
+        with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+            return resp.read().decode('utf-8', errors='ignore')
+
+    # ── Strategy 1: personal booking page (user-specified URL) ──────────────
+    # This page may contain SSR JSON or inline state with full service catalogue.
+    personal_urls = [
+        "https://n2527773.yclients.ru/company/2188101/personal/select-services?o=m-1",
+        "https://n2527773.yclients.ru/company/2188101/personal/select-services",
+    ]
+    for url in personal_urls:
+        try:
+            html = _fetch_url(url)
+            log.info("YClients personal page: fetched %d bytes from %s", len(html), url)
+
+            # 1a. Look for __INITIAL_STATE__ / __vue_store__ / similar SSR blobs
+            for pat in [
+                r'window\.__INITIAL_STATE__\s*=\s*(\{.+?\})\s*;',
+                r'window\.__vue_store__\s*=\s*(\{.+?\})\s*;',
+                r'window\.__APP_STATE__\s*=\s*(\{.+?\})\s*;',
+                r'window\.__yl_\w+\s*=\s*(\{.+?\})\s*;',
+            ]:
+                m = re.search(pat, html, re.DOTALL)
+                if m:
+                    svcs = _parse_json_blob(m.group(1))
+                    if svcs:
+                        log.info("YClients: %d services from SSR blob", len(svcs))
+                        return _dedupe(svcs)
+
+            # 1b. Extract all <script> tag contents and scan each for service data
+            for script_content in re.findall(r'<script[^>]*>(.*?)</script>', html, re.DOTALL):
+                if 'price_min' in script_content or 'price' in script_content.lower():
+                    svcs = _parse_json_blob(script_content)
+                    if svcs:
+                        log.info("YClients: %d services from <script> tag", len(svcs))
+                        return _dedupe(svcs)
+
+            # 1c. Scan whole HTML for price patterns
+            svcs = _parse_json_blob(html)
+            if svcs:
+                log.info("YClients: %d services from HTML scan", len(svcs))
+                return _dedupe(svcs)
+
+        except Exception as e:
+            log.debug("YClients personal page %s failed: %s", url, e)
+
+    # ── Strategy 2: public JSON API endpoints ────────────────────────────────
+    json_api_urls = [
+        "https://api.yclients.com/api/v1/company/2188101/services/?count=200&active=1",
+        "https://api.yclients.com/api/v1/book_services/2527773/?show_all=1",
+        "https://api.yclients.com/api/v1/book_services/2527773/",
+    ]
+    for url in json_api_urls:
+        try:
+            raw = _fetch_url(url, accept='application/json')
+            svcs = _parse_json_blob(raw)
+            if svcs:
+                log.info("YClients: %d services from API %s", len(svcs), url)
+                return _dedupe(svcs)
+        except Exception as e:
+            log.debug("YClients API %s failed: %s", url, e)
+
+    # ── Strategy 3: other booking pages ─────────────────────────────────────
+    other_urls = [
         "https://n2527773.yclients.ru/company/2188101/select-service?iframe=1&lang=ru-RU",
         "https://n2527773.yclients.ru/company/2188101/",
-        "https://n2527773.yclients.ru/",
     ]
-    for url in scrape_urls:
+    for url in other_urls:
         try:
-            req = urllib.request.Request(url, headers={
-                "User-Agent": ua,
-                "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
-                "Accept-Language": "ru-RU,ru;q=0.9",
-            })
-            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
-                html = resp.read().decode('utf-8', errors='ignore')
-            services = _extract_services_from_html(html)
-            if services:
-                log.info("YClients: got %d services by scraping %s", len(services), url)
-                return _dedupe(services)
+            html = _fetch_url(url)
+            svcs = _parse_json_blob(html)
+            if svcs:
+                log.info("YClients: %d services from fallback %s", len(svcs), url)
+                return _dedupe(svcs)
         except Exception as e:
-            log.debug("YClients scrape %s failed: %s", url, e)
+            log.debug("YClients fallback %s failed: %s", url, e)
 
-    log.warning("YClients: all strategies exhausted, no services found")
+    log.warning("YClients: all strategies exhausted — no services found")
     return []
 
 
