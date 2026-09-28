@@ -222,52 +222,79 @@ def _fetch_yclients_services():
                 seen.add(s['name']); out.append(s)
         return out
 
+    def _decode_ue(s):
+        """Decode JSON unicode escapes \\u041c -> М inside a captured string."""
+        return re.sub(r'\\u([0-9a-fA-F]{4})', lambda m: chr(int(m.group(1), 16)), s)
+
+    def _extract_rows(data):
+        """Recursively find a list of service-like dicts in a parsed JSON structure."""
+        if isinstance(data, list):
+            if data and isinstance(data[0], dict) and ('title' in data[0] or 'name' in data[0]):
+                return data
+        if isinstance(data, dict):
+            # Try common YClients keys first
+            for key in ('data', 'services', 'items', 'result'):
+                v = data.get(key)
+                if v is not None:
+                    rows = _extract_rows(v)
+                    if rows:
+                        return rows
+            # Fallback: first list value that looks like services
+            for v in data.values():
+                rows = _extract_rows(v)
+                if rows:
+                    return rows
+        return []
+
     def _parse_content(raw):
         """Extract {name, price} services from JSON or HTML string."""
         services = []
         try:
             data = _json.loads(raw)
-            rows = data.get('data', data) if isinstance(data, dict) else data
-            if isinstance(rows, list):
-                for item in rows:
-                    if isinstance(item, dict):
-                        name = (item.get('title') or item.get('name') or '').strip()
-                        if not name:
-                            continue
-                        # price_min=0 means "price on request" or range — fall back to price_max
-                        price = int(item.get('price_min') or 0)
-                        if price == 0:
-                            price = int(item.get('price_max') or item.get('price') or item.get('cost') or 0)
-                        if price > 0:
-                            services.append({"name": name, "price": price})
+            rows = _extract_rows(data)
+            for item in rows:
+                if not isinstance(item, dict):
+                    continue
+                name = (item.get('title') or item.get('name') or '').strip()
+                if not name:
+                    continue
+                # price_min=0 means price range — fall back to price_max, then price, then cost
+                price = int(item.get('price_min') or 0)
+                if price == 0:
+                    price = int(item.get('price_max') or item.get('price') or item.get('cost') or 0)
+                # Keep ALL named services (price=0 shown as 0 so admin can fill manually)
+                services.append({"name": name, "price": price})
             if services:
                 return services
         except Exception:
             pass
-        # Regex: "title":"NAME" near "price_min" or "price_max" within 600 chars
+
+        # Regex fallback: "title":"NAME" near price fields within 600 chars
+        # NOTE: raw JSON may contain \\uXXXX escapes — decode them after capture
         price_pats = [r'"price_min"\s*:\s*(\d+)', r'"price_max"\s*:\s*(\d+)',
                       r'"price"\s*:\s*(\d+)', r'"cost"\s*:\s*(\d+)']
-        for m in re.finditer(r'"title"\s*:\s*"([^"]{2,100})"', raw):
+        for m in re.finditer(r'"title"\s*:\s*"([^"\\]{2,100}(?:\\.[^"\\]{0,100})*)"', raw):
+            raw_name = m.group(1)
+            name = _decode_ue(raw_name)
             tail = raw[m.start():m.start()+600]
             price = 0
             for pp in price_pats:
                 pm = re.search(pp, tail)
-                if pm and int(pm.group(1)) > 0:
-                    price = int(pm.group(1))
-                    break
-            if price > 0:
-                services.append({"name": m.group(1), "price": price})
+                if pm:
+                    v = int(pm.group(1))
+                    if v > 0:
+                        price = v
+                        break
+            services.append({"name": name, "price": price})
         if services:
             return services
         # Reverse scan
         for pp in price_pats:
             for m in re.finditer(pp, raw):
-                if int(m.group(1)) == 0:
-                    continue
                 chunk = raw[max(0, m.start()-600):m.start()+100]
-                tm = re.search(r'"title"\s*:\s*"([^"]{2,100})"', chunk)
+                tm = re.search(r'"title"\s*:\s*"([^"\\]{2,100})"', chunk)
                 if tm:
-                    services.append({"name": tm.group(1), "price": int(m.group(1))})
+                    services.append({"name": _decode_ue(tm.group(1)), "price": int(m.group(1))})
         return services
 
     # Strategy 1: Playwright headless browser (installed at build time via nixpacks)
