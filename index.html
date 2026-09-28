@@ -1254,8 +1254,9 @@ function initGallery(wrap) {
   if (!wrap) return;
   var slides = Array.from(wrap.querySelectorAll('.gal-slide'));
   var n = slides.length;
+  if (n === 0) return; // no slides yet; called again by dynamic loader
   var dots = Array.from(document.querySelectorAll('.gal-dot'));
-  var cur = 1;
+  var cur = 0;
   var locked = false;
 
   function update(skipTransition) {
@@ -1297,7 +1298,9 @@ function initGallery(wrap) {
   }, { passive: true });
 
   update(true);
-})();
+}
+// Call with empty wrap; will also be called by dynamic loader after slides load
+initGallery(document.querySelector('.gal-slider-wrap'));
 
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
 
@@ -1426,13 +1429,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBooking
         wrap.innerHTML = cfg.gallery.map(function(url){
           return '<div class="gal-slide"><img src="'+esc(url)+'" alt="Работа барбершопа" loading="lazy"></div>';
         }).join('');
-        // Re-init gallery slider
-        initGallery(wrap);
-      }
-      // Update dots
+      // Update dots FIRST so initGallery picks them up
       var dotsWrap = document.querySelector('.gal-dots');
       if(dotsWrap){
         dotsWrap.innerHTML = cfg.gallery.map(function(_,i){ return '<button class="gal-dot'+(i===0?' active':'')+'"></button>'; }).join('');
+      }
+        // Re-init gallery slider
+        initGallery(wrap);
       }
     }
   }).catch(function(){});
