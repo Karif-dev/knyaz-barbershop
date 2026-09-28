@@ -1470,7 +1470,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBooking
       // No prices synced yet — just update images on the hardcoded cards
       if(si.hit){ var hi=document.querySelector('.svc-hit-img img'); if(hi) hi.src=si.hit; }
       var cards=document.querySelectorAll('.svc-card');
-      ['svc1','svc2','svc3','svc4'].forEach(function(k,i){
+      ['svc1','svc2','svc3','svc5'].forEach(function(k,i){
         if(si[k]&&cards[i]){ var img=cards[i].querySelector('.svc-img img'); if(img) img.src=si[k]; }
       });
     }
