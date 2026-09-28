@@ -202,31 +202,6 @@ def admin_upload():
 
     return jsonify({'ok': True, 'url': f'/{filename}', 'filename': filename})
 
-_playwright_ready = False  # True once chromium is installed
-
-
-def _install_playwright_chromium():
-    """Install Playwright's Chromium at startup in a background thread."""
-    global _playwright_ready
-    import subprocess, sys
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "playwright", "install", "chromium", "--with-deps"],
-            capture_output=True, text=True, timeout=300
-        )
-        if result.returncode == 0:
-            _playwright_ready = True
-            log.info("Playwright chromium ready")
-        else:
-            log.warning("playwright install failed (rc=%d): %s", result.returncode, result.stderr[-400:])
-    except Exception as e:
-        log.warning("playwright install error: %s", e)
-
-
-# Start Playwright installation immediately when app boots
-threading.Thread(target=_install_playwright_chromium, daemon=True, name="pw-install").start()
-
-
 def _fetch_yclients_services():
     """
     Fetch services + prices from the YClients booking SPA.
@@ -295,49 +270,46 @@ def _fetch_yclients_services():
                     services.append({"name": tm.group(1), "price": int(m.group(1))})
         return services
 
-    # Strategy 1: Playwright headless browser
-    if _playwright_ready:
-        try:
-            from playwright.sync_api import sync_playwright
-            log.info("YClients: launching Playwright for %s", TARGET_URL)
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=True, args=[
-                    '--no-sandbox', '--disable-dev-shm-usage',
-                    '--disable-blink-features=AutomationControlled',
-                ])
-                context = browser.new_context(user_agent=ua, locale='ru-RU')
-                page = context.new_page()
+    # Strategy 1: Playwright headless browser (installed at build time via nixpacks)
+    try:
+        from playwright.sync_api import sync_playwright
+        log.info("YClients: launching Playwright for %s", TARGET_URL)
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                '--no-sandbox', '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+            ])
+            context = browser.new_context(user_agent=ua, locale='ru-RU')
+            page = context.new_page()
 
-                # Intercept API JSON responses
-                captured = []
-                def on_response(resp):
-                    try:
-                        if resp.status == 200 and 'yclients' in resp.url:
-                            ct = resp.headers.get('content-type', '')
-                            if 'json' in ct:
-                                svcs = _parse_content(resp.text())
-                                if svcs:
-                                    captured.extend(svcs)
-                    except Exception:
-                        pass
-                page.on('response', on_response)
+            # Intercept API JSON responses (fastest path — catches data before DOM render)
+            captured = []
+            def on_response(resp):
+                try:
+                    if resp.status == 200 and 'yclients' in resp.url:
+                        ct = resp.headers.get('content-type', '')
+                        if 'json' in ct:
+                            svcs = _parse_content(resp.text())
+                            if svcs:
+                                captured.extend(svcs)
+                except Exception:
+                    pass
+            page.on('response', on_response)
 
-                page.goto(TARGET_URL, wait_until='networkidle', timeout=30000)
-                page.wait_for_timeout(3000)  # extra wait for Vue render
+            page.goto(TARGET_URL, wait_until='networkidle', timeout=30000)
+            page.wait_for_timeout(3000)  # extra wait for Vue render
 
-                if not captured:
-                    captured = _parse_content(page.content())
+            if not captured:
+                captured = _parse_content(page.content())
 
-                browser.close()
+            browser.close()
 
-            if captured:
-                log.info("YClients Playwright: got %d services", len(captured))
-                return _dedupe(captured)
-            log.warning("YClients Playwright: page loaded but no services found")
-        except Exception as e:
-            log.warning("YClients Playwright failed: %s", e)
-    else:
-        log.info("YClients: Playwright not ready — using HTTP fallback")
+        if captured:
+            log.info("YClients Playwright: got %d services", len(captured))
+            return _dedupe(captured)
+        log.warning("YClients Playwright: page loaded but no services found in DOM/API")
+    except Exception as e:
+        log.warning("YClients Playwright failed: %s", e)
 
     # Strategy 2: plain HTTP fallback
     def _fetch_url(url, accept='text/html'):
