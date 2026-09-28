@@ -89,36 +89,6 @@ img{max-width:100%;display:block}
 .pbtn:hover{background:var(--gold-lt)}
 .pbtn.busy{opacity:.4;pointer-events:none}
 
-/* Hamburger – mobile only */
-.burger{
-  display:none;flex-direction:column;justify-content:center;gap:5px;
-  width:40px;height:40px;border:none;background:transparent;
-  cursor:pointer;padding:8px;
-}
-.burger span{display:block;width:22px;height:1.5px;background:var(--text);transition:all .28s}
-.burger.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
-.burger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
-.burger.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
-
-/* Mobile fullscreen menu */
-.mob-menu{
-  display:none;position:fixed;inset:0;background:var(--bg);z-index:99;
-  flex-direction:column;justify-content:center;align-items:flex-start;
-  padding:48px 40px;gap:0;
-}
-.mob-menu.open{display:flex}
-.mob-tab{
-  display:block;width:100%;padding:16px 0;
-  background:none;border:none;color:rgba(255,255,255,.55);
-  font-family:'Oswald',sans-serif;font-size:28px;font-weight:500;
-  letter-spacing:.1em;text-transform:uppercase;text-align:left;
-  cursor:pointer;border-bottom:1px solid var(--line);
-  transition:color .18s;
-}
-.mob-tab:first-child{border-top:1px solid var(--line)}
-.mob-tab:hover,.mob-tab.on{color:var(--gold)}
-.mob-footer{margin-top:auto;display:flex;gap:12px;padding-top:24px}
-
 /* ── Layout ──────────────────────────────── */
 .main{max-width:860px;margin:0 auto;padding:28px 24px 72px}
 .view{display:none}
@@ -291,18 +261,37 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
 .spin{display:inline-block;width:12px;height:12px;flex-shrink:0;border:2px solid rgba(255,255,255,.15);border-top-color:currentColor;border-radius:50%;animation:rot .65s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
 
+/* ── Mobile bottom nav ───────────────────── */
+.mob-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(5,5,5,.96);
+  border-top:1px solid var(--line);
+  z-index:40;
+  padding:0 4px env(safe-area-inset-bottom,0px);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.mob-nav-inner{display:flex;justify-content:space-around}
+.mob-nav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 6px;font-size:10px;font-weight:500;letter-spacing:.04em;
+  color:var(--text2);background:none;border:none;flex:1;
+  cursor:pointer;transition:color .16s;
+}
+.mob-nav-btn svg{width:20px;height:20px}
+.mob-nav-btn.on{color:var(--gold)}
+
 /* ── Responsive ──────────────────────────── */
 @media(max-width:640px){
-  .hdr{padding:0 12px;gap:8px}
-  .logo{font-size:14px;letter-spacing:.12em}
-  .tabs{padding-left:8px}
-  .tab{padding:0 10px;font-size:12px;gap:5px}
-  .tab svg{display:none}
+  .hdr{padding:0 14px;gap:8px}
+  .logo{font-size:14px;letter-spacing:.14em}
+  .tabs{display:none}
   .burger{display:none}
   .hdr-r .ibtn:first-child{display:none}
   .pbtn .pl{display:none}
   .pbtn{padding:0 12px;min-width:40px;justify-content:center}
-  .main{padding:14px 12px 56px}
+  .mob-nav{display:block}
+  .main{padding:14px 12px 72px}
   .mc-fs{grid-template-columns:1fr}
   .s2col{grid-template-columns:1fr}
   .svc-wrap{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
@@ -344,32 +333,12 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
     <button class="ibtn" onclick="logout()" title="Выйти" aria-label="Выйти">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </button>
-    <button class="burger" id="burger" onclick="toggleMob()" aria-label="Меню" aria-expanded="false" aria-controls="mob-menu">
-      <span></span><span></span><span></span>
-    </button>
     <button class="pbtn" id="pub-btn" onclick="publishAll()">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
       <span class="pl">Опубликовать</span>
     </button>
   </div>
 </header>
-
-<!-- Mobile fullscreen menu -->
-<nav class="mob-menu" id="mob-menu" aria-label="Мобильное меню">
-  <button class="mob-tab on" onclick="mobGo('gallery',this)">Галерея</button>
-  <button class="mob-tab" onclick="mobGo('team',this)">Команда</button>
-  <button class="mob-tab" onclick="mobGo('services',this)">Фото услуг</button>
-  <button class="mob-tab" onclick="mobGo('prices',this)">Цены</button>
-  <button class="mob-tab" onclick="mobGo('settings',this)">Настройки</button>
-  <div class="mob-footer">
-    <a href="/" target="_blank" class="ibtn" title="Сайт" aria-label="Открыть сайт">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-    </a>
-    <button class="ibtn" onclick="logout()" title="Выйти" aria-label="Выйти">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    </button>
-  </div>
-</nav>
 
 <main class="main">
 
@@ -482,6 +451,32 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
 
 </main>
 
+<!-- Mobile bottom nav -->
+<nav class="mob-nav" aria-label="Навигация">
+  <div class="mob-nav-inner">
+    <button class="mob-nav-btn on" onclick="go('gallery',this)" aria-label="Галерея">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 5-5 4 4 3-3 6 6"/></svg>
+      Галерея
+    </button>
+    <button class="mob-nav-btn" onclick="go('team',this)" aria-label="Команда">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M19 11c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm3 10v-1a3 3 0 0 0-3-3h-1"/></svg>
+      Команда
+    </button>
+    <button class="mob-nav-btn" onclick="go('services',this)" aria-label="Фото услуг">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Услуги
+    </button>
+    <button class="mob-nav-btn" onclick="go('prices',this)" aria-label="Цены">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+      Цены
+    </button>
+    <button class="mob-nav-btn" onclick="go('settings',this)" aria-label="Настройки">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Настройки
+    </button>
+  </div>
+</nav>
+
 <div class="toast-r" aria-live="polite" aria-atomic="true">
   <div class="toast" id="toast" role="status"></div>
 </div>
@@ -511,34 +506,26 @@ async function init(){
   }catch(e){toast('Ошибка загрузки конфига','err')}
 }
 
-// ── Desktop tabs ──────────────────────────
-let currentView='gallery';
-function go(name,btn){
-  currentView=name;
+// ── Navigation ────────────────────────────
+function go(name, btn){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('v-'+name).classList.add('on');
+  // desktop tabs
   document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-selected','false')});
-  btn.classList.add('on');btn.setAttribute('aria-selected','true');
-}
-
-// ── Mobile menu ───────────────────────────
-function toggleMob(){
-  const menu=document.getElementById('mob-menu');
-  const burger=document.getElementById('burger');
-  const open=menu.classList.toggle('open');
-  burger.classList.toggle('open',open);
-  burger.setAttribute('aria-expanded',open);
-  document.body.style.overflow=open?'hidden':'';
-}
-function mobGo(name,btn){
-  // update mobile tab highlight
-  document.querySelectorAll('.mob-tab').forEach(b=>b.classList.remove('on'));
+  // mobile bottom nav
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('on'));
+  // highlight whichever button was pressed (works for both desktop & mobile)
   btn.classList.add('on');
-  // switch view
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
-  document.getElementById('v-'+name).classList.add('on');
-  // close menu
-  toggleMob();
+  if(btn.classList.contains('tab')) btn.setAttribute('aria-selected','true');
+  // also mirror in the other nav
+  const idx=[...btn.parentElement.children].indexOf(btn);
+  if(btn.classList.contains('tab')){
+    const mob=document.querySelectorAll('.mob-nav-btn')[idx];
+    if(mob) mob.classList.add('on');
+  } else {
+    const desk=document.querySelectorAll('.tab')[idx];
+    if(desk){desk.classList.add('on');desk.setAttribute('aria-selected','true')}
+  }
 }
 
 // ── Gallery ───────────────────────────────
