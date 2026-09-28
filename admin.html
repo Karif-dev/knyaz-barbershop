@@ -2,680 +2,705 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Админка — Князь</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Управление — Князь</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@600&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+/* ── Reset & tokens ───────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#050505;--surface:#0d0d0d;--s2:#141414;--s3:#1a1a1a;
-  --text:#fff;--text-m:#888;--text-d:rgba(255,255,255,.35);
-  --border:rgba(255,255,255,.1);--border-h:rgba(255,255,255,.2);
-  --gold:#c9a227;--err:#e53;--ok:#2d9;
+  --bg:#07090f;
+  --s1:#0e1219;
+  --s2:#161c28;
+  --s3:#1e2636;
+  --s4:#28344a;
+  --text:#e2e8f4;
+  --text2:#8b97ad;
+  --text3:#4e5a6e;
+  --line:rgba(255,255,255,.07);
+  --line-h:rgba(255,255,255,.14);
+  --a:#6366f1;
+  --a-h:#818cf8;
+  --a-d:rgba(99,102,241,.15);
+  --err:#f87171;
+  --ok:#4ade80;
+  --warn:#fbbf24;
   color-scheme:dark
 }
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5}
 a{color:inherit;text-decoration:none}
-button{cursor:pointer;font-family:'Inter',sans-serif}
-input,textarea,select{font-family:'Inter',sans-serif}
+button,input,textarea,select{font-family:inherit;font-size:inherit}
+img{max-width:100%;display:block}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--a);outline-offset:2px;border-radius:4px}
 
-/* ── Layout ── */
-.layout{display:flex;min-height:100vh}
-.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:10}
-.main{margin-left:220px;flex:1;min-height:100vh;padding:32px}
+/* ── Header ───────────────────────────────────────── */
+.hdr{
+  position:sticky;top:0;z-index:50;
+  height:52px;display:flex;align-items:center;
+  padding:0 16px;gap:12px;
+  background:rgba(7,9,15,.88);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--line);
+}
+.logo{
+  font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;
+  letter-spacing:.14em;white-space:nowrap;flex-shrink:0;
+  padding-right:16px;border-right:1px solid var(--line);
+}
+.tabs{display:flex;gap:1px;flex:1;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  display:flex;align-items:center;gap:6px;
+  padding:0 13px;height:52px;flex-shrink:0;
+  background:none;border:none;color:var(--text2);
+  font-size:13px;font-weight:500;white-space:nowrap;
+  position:relative;cursor:pointer;
+  transition:color .16s;
+}
+.tab::after{
+  content:'';position:absolute;bottom:0;left:13px;right:13px;height:2px;
+  background:var(--a);border-radius:2px 2px 0 0;
+  transform:scaleX(0);transition:transform .16s;
+}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--a-h)}
+.tab.on::after{transform:scaleX(1)}
+.hdr-r{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+/* 40×40px touch target for icon buttons */
+.ibtn{
+  width:40px;height:40px;border-radius:9px;
+  border:1px solid var(--line);background:transparent;color:var(--text2);
+  display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:border-color .16s,color .16s,background .16s;
+}
+.ibtn:hover{border-color:var(--line-h);color:var(--text);background:var(--s2)}
+.pbtn{
+  height:40px;padding:0 16px;border-radius:9px;
+  border:none;background:var(--a);color:#fff;
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:600;white-space:nowrap;
+  cursor:pointer;transition:background .16s,opacity .16s;
+}
+.pbtn:hover{background:var(--a-h)}
+.pbtn.busy{opacity:.45;pointer-events:none}
 
-/* ── Sidebar ── */
-.sb-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
-.sb-k{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--gold);letter-spacing:.08em}
-.sb-label{font-size:10px;color:var(--text-m);letter-spacing:.15em;text-transform:uppercase;margin-top:3px}
-.sb-nav{flex:1;padding:12px 8px}
-.sb-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:var(--text-m);transition:all .2s;cursor:pointer;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-size:13.5px}
-.sb-item svg{opacity:.6;flex-shrink:0}
-.sb-item:hover{background:var(--s2);color:var(--text)}
-.sb-item.active{background:var(--gold);color:#000 !important;font-weight:600}
-.sb-item.active svg{opacity:1}
-.sb-bottom{padding:12px 8px;border-top:1px solid var(--border)}
+/* ── Layout ───────────────────────────────────────── */
+.main{max-width:880px;margin:0 auto;padding:28px 20px 64px}
+.view{display:none}
+.view.on{display:block}
 
-/* ── Top bar ── */
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
-.page-title{font-size:24px;font-weight:700}
-.publish-btn{background:var(--gold);color:#000;border:none;border-radius:10px;padding:11px 22px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;transition:opacity .2s}
-.publish-btn:hover{opacity:.85}
-.publish-btn.loading{opacity:.6;pointer-events:none}
+/* ── Card ─────────────────────────────────────────── */
+.card{background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:22px 24px}
+.card+.card{margin-top:12px}
+.card-hd{
+  display:flex;align-items:center;gap:8px;margin-bottom:20px;
+  font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--text2);
+}
+.card-hd-e{margin-left:auto;font-weight:400}
 
-/* ── Toast ── */
-.toast{position:fixed;bottom:28px;right:28px;background:var(--s3);border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:13.5px;opacity:0;transform:translateY(10px);transition:all .3s;z-index:999;max-width:320px}
-.toast.show{opacity:1;transform:none}
-.toast.ok{border-color:var(--ok);color:var(--ok)}
-.toast.err{border-color:var(--err);color:var(--err)}
+/* ── Gallery ──────────────────────────────────────── */
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px}
+.gal-cell{
+  position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
+  background:var(--s2);border:1px solid var(--line);cursor:grab;
+}
+.gal-cell:active{cursor:grabbing}
+.gal-cell img{width:100%;height:100%;object-fit:cover;pointer-events:none;transition:transform .22s}
+.gal-cell:hover img{transform:scale(1.05)}
+.gal-del{
+  position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;
+  background:rgba(0,0,0,.75);border:none;color:#fff;font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .15s;backdrop-filter:blur(6px);cursor:pointer;
+}
+.gal-cell:hover .gal-del,.gal-cell:focus-within .gal-del{opacity:1}
+.gal-cell.drop-ov{outline:2px solid var(--a);outline-offset:-2px}
 
-/* ── Tab content ── */
-.tab-content{display:none}
-.tab-content.active{display:block}
+.dropz{
+  margin-top:12px;border:2px dashed var(--line);border-radius:10px;
+  padding:28px;text-align:center;color:var(--text2);cursor:pointer;
+  transition:border-color .16s,color .16s;
+}
+.dropz:hover,.dropz.over{border-color:var(--a);color:var(--a-h)}
+.dropz input{display:none}
+.dropz svg{margin:0 auto 8px;opacity:.4}
+.dropz-p{font-size:13.5px;font-weight:500}
+.dropz-s{font-size:12px;opacity:.6;margin-top:2px}
 
-/* ── Section card ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px}
-.card+.card{margin-top:16px}
-.card-title{font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-m);margin-bottom:20px;display:flex;align-items:center;gap:8px}
+/* ── Team ─────────────────────────────────────────── */
+.team-list{display:flex;flex-direction:column;gap:10px}
+.mc{
+  background:var(--s2);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;display:flex;align-items:flex-start;gap:14px;
+}
+.mc-av{
+  position:relative;width:56px;height:56px;flex-shrink:0;
+  border-radius:9px;overflow:hidden;background:var(--s3);cursor:pointer;
+}
+.mc-av img{width:100%;height:100%;object-fit:cover}
+.mc-av-ov{
+  position:absolute;inset:0;background:rgba(0,0,0,.62);border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .15s;
+}
+.mc-av:hover .mc-av-ov{opacity:1}
+.mc-fs{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mc-fs .fw{grid-column:1/-1}
+/* field */
+.fl{display:flex;flex-direction:column;gap:3px}
+.fl-l{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)}
+.fi{
+  width:100%;background:var(--s3);border:1px solid var(--line);
+  border-radius:7px;padding:8px 12px;color:var(--text);
+  outline:none;transition:border-color .15s;
+}
+.fi:focus{border-color:var(--a)}
+textarea.fi{resize:vertical;min-height:60px;line-height:1.5}
+/* small ghost button */
+.gbtn{
+  height:40px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--line);background:transparent;color:var(--text2);
+  display:inline-flex;align-items:center;gap:5px;font-size:13px;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.gbtn:hover{border-color:var(--line-h);color:var(--text);background:var(--s3)}
+.gbtn.dn:hover{border-color:var(--err);color:var(--err)}
+.add-btn{
+  width:100%;height:48px;margin-top:12px;
+  border:2px dashed var(--line);border-radius:12px;background:transparent;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;
+  transition:all .16s;
+}
+.add-btn:hover{border-color:var(--a);color:var(--a-h)}
 
-/* ── Gallery ── */
-.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-.gal-item{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--s2);border:1px solid var(--border);cursor:grab}
-.gal-item:active{cursor:grabbing}
-.gal-item img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
-.gal-item .del-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border:none;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;opacity:0;transition:opacity .2s;backdrop-filter:blur(4px)}
-.gal-item:hover .del-btn{opacity:1}
-.gal-item .drag-handle{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);border-radius:6px;padding:3px 5px;opacity:0;transition:opacity .2s}
-.gal-item:hover .drag-handle{opacity:1}
-.gal-item.drag-over{outline:2px solid var(--gold);outline-offset:-2px}
-.gal-add{aspect-ratio:1;background:var(--s2);border:2px dashed var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:8px;color:var(--text-m);transition:all .2s}
-.gal-add:hover{border-color:var(--gold);color:var(--gold)}
-.gal-add svg{opacity:.5}
+/* ── Service images ───────────────────────────────── */
+.svc-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.svc-card{border-radius:11px;overflow:hidden;border:1px solid var(--line);background:var(--s2)}
+.svc-th{position:relative;aspect-ratio:16/9;background:var(--s3);cursor:pointer}
+.svc-th img{width:100%;height:100%;object-fit:cover;transition:transform .22s}
+.svc-th:hover img{transform:scale(1.05)}
+.svc-ov{
+  position:absolute;inset:0;background:rgba(0,0,0,.58);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .15s;
+}
+.svc-th:hover .svc-ov{opacity:1}
+.svc-info{padding:9px 13px 11px}
+.svc-n{font-size:12.5px;font-weight:500}
+.svc-h{font-size:11px;color:var(--text2);margin-top:2px}
 
-/* ── Team ── */
-.team-list{display:flex;flex-direction:column;gap:12px}
-.member-card{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:flex-start;gap:16px}
-.member-photo{width:60px;height:60px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--s3)}
-.member-photo-wrap{position:relative;flex-shrink:0}
-.member-photo-edit{position:absolute;inset:0;background:rgba(0,0,0,.6);border-radius:10px;display:flex;align-items:center;justify-content:center;opacity:0;cursor:pointer;transition:opacity .2s}
-.member-photo-wrap:hover .member-photo-edit{opacity:1}
-.member-fields{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.member-fields .full{grid-column:1/-1}
-.member-actions{display:flex;gap:8px;flex-shrink:0;margin-top:4px}
-.field-group{display:flex;flex-direction:column;gap:5px}
-.field-label{font-size:11px;color:var(--text-m);text-transform:uppercase;letter-spacing:.08em}
-.field-input{background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13.5px;outline:none;transition:border-color .2s;width:100%}
-.field-input:focus{border-color:var(--gold)}
-textarea.field-input{resize:vertical;min-height:70px}
-.icon-btn{background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text-m);display:flex;align-items:center;gap:6px;font-size:13px;transition:all .2s}
-.icon-btn:hover{border-color:var(--border-h);color:var(--text)}
-.icon-btn.danger:hover{border-color:var(--err);color:var(--err)}
-.add-member-btn{background:transparent;border:2px dashed var(--border);border-radius:12px;padding:16px;width:100%;color:var(--text-m);font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
-.add-member-btn:hover{border-color:var(--gold);color:var(--gold)}
+/* ── Prices ───────────────────────────────────────── */
+.sync-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.sync-btn{
+  height:40px;padding:0 16px;border-radius:9px;
+  border:1px solid var(--line);background:transparent;color:var(--text);
+  display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;
+  cursor:pointer;transition:all .16s;
+}
+.sync-btn:hover{border-color:var(--a);color:var(--a-h)}
+.sync-btn.busy{opacity:.4;pointer-events:none}
+.sync-ts{font-size:12px;color:var(--text2)}
+.dot-ok{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);margin-right:5px}
+.pt{width:100%;border-collapse:collapse}
+.pt th{text-align:left;padding:7px 12px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--text2)}
+.pt td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:13.5px}
+.pt tr:last-child td{border-bottom:none}
+.pt tr:hover td{background:rgba(99,102,241,.06)}
+.price-pill{
+  display:inline-flex;align-items:center;
+  background:var(--a-d);color:var(--a-h);
+  border-radius:999px;padding:3px 11px;
+  font-size:13px;font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+.empty{
+  padding:40px 16px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.empty svg{opacity:.18}
+.empty p{font-size:13.5px;color:var(--text2);max-width:280px;line-height:1.65}
 
-/* ── Service images ── */
-.svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
-.svc-item{background:var(--s2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.svc-img-wrap{position:relative;aspect-ratio:16/9;background:var(--s3)}
-.svc-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
-.svc-img-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;cursor:pointer}
-.svc-img-wrap:hover .svc-img-overlay{opacity:1}
-.svc-info{padding:12px 14px}
-.svc-name{font-size:13px;font-weight:600}
-.svc-img-label{font-size:11px;color:var(--text-m);margin-top:2px}
+/* ── Settings ─────────────────────────────────────── */
+.s2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.set-s{display:flex;flex-direction:column;gap:9px}
+.pw-btn{
+  align-self:flex-start;height:40px;padding:0 18px;border-radius:8px;
+  border:none;background:var(--a);color:#fff;font-size:13.5px;font-weight:600;
+  cursor:pointer;transition:background .15s;
+}
+.pw-btn:hover{background:var(--a-h)}
+.infobox{
+  font-size:12px;color:var(--text2);line-height:1.85;
+  padding:14px;background:var(--s2);border-radius:10px;border:1px solid var(--line);
+}
+.infobox code{background:var(--s3);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--a-h);font-family:monospace}
+.warn-box{
+  margin-top:12px;padding:11px 14px;border-radius:8px;
+  background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.22);
+  font-size:12px;color:var(--warn);line-height:1.7;
+}
 
-/* ── Prices ── */
-.prices-table{width:100%;border-collapse:collapse}
-.prices-table th{text-align:left;font-size:11px;color:var(--text-m);text-transform:uppercase;letter-spacing:.08em;padding:8px 12px;border-bottom:1px solid var(--border)}
-.prices-table td{padding:12px;border-bottom:1px solid var(--border);font-size:13.5px}
-.prices-table tr:last-child td{border-bottom:none}
-.price-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13.5px;width:100px;outline:none}
-.price-input:focus{border-color:var(--gold)}
-.sync-status{font-size:12px;color:var(--text-m);margin-top:8px}
-.sync-btn{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;color:var(--text);font-size:13.5px;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
-.sync-btn:hover{border-color:var(--gold);color:var(--gold)}
-.sync-btn.loading{opacity:.5;pointer-events:none}
+/* ── Toast ────────────────────────────────────────── */
+.toast-r{position:fixed;bottom:env(safe-area-inset-bottom,0px);right:0;padding:0 16px 20px;z-index:999;pointer-events:none}
+.toast{
+  background:var(--s1);border:1px solid var(--line);border-radius:12px;
+  padding:11px 16px;font-size:13px;max-width:300px;
+  box-shadow:0 8px 28px rgba(0,0,0,.55);
+  opacity:0;transform:translateY(8px) scale(.97);
+  transition:opacity .2s,transform .2s;pointer-events:none;
+}
+.toast.vis{opacity:1;transform:none;pointer-events:auto}
+.toast.ok{border-color:rgba(74,222,128,.3);color:var(--ok)}
+.toast.err{border-color:rgba(248,113,113,.3);color:var(--err)}
 
-/* ── Settings ── */
-.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.settings-section{display:flex;flex-direction:column;gap:10px}
-.settings-section .field-label{margin-bottom:2px}
-.save-pw-btn{background:var(--gold);color:#000;border:none;border-radius:8px;padding:10px 18px;font-size:13.5px;font-weight:600;margin-top:4px;transition:opacity .2s}
-.save-pw-btn:hover{opacity:.85}
-.github-note{font-size:12px;color:var(--text-m);line-height:1.7;padding:14px;background:var(--s2);border-radius:10px;border:1px solid var(--border);margin-top:8px}
-.github-note code{background:var(--s3);border-radius:4px;padding:1px 5px;font-size:11px;color:var(--gold)}
+/* ── Spinner ──────────────────────────────────────── */
+.spin{display:inline-block;width:13px;height:13px;flex-shrink:0;border:2px solid rgba(255,255,255,.2);border-top-color:currentColor;border-radius:50%;animation:rot .65s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
 
-/* ── Upload area ── */
-.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;color:var(--text-m);transition:all .2s;cursor:pointer}
-.drop-zone.active,.drop-zone:hover{border-color:var(--gold);color:var(--gold)}
-.drop-zone input[type=file]{display:none}
+/* ── Shimmer skeleton ─────────────────────────────── */
+@keyframes sh{from{background-position:-200% 0}to{background-position:200% 0}}
+.skel{background:linear-gradient(90deg,var(--s2) 25%,var(--s3) 50%,var(--s2) 75%);background-size:200% 100%;animation:sh 1.6s infinite;border-radius:6px}
 
-/* ── Spinner ── */
-.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.15);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── Mobile nav ── */
-.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:20;padding:0 4px env(safe-area-inset-bottom,0px)}
-.mob-nav-inner{display:flex;justify-content:space-around}
-.mob-nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;font-size:10px;color:var(--text-m);background:none;border:none;flex:1;transition:color .2s}
-.mob-nav-btn svg{width:20px;height:20px}
-.mob-nav-btn.active{color:var(--gold)}
-@media(max-width:640px){
-  .sidebar{display:none}
-  .mob-nav{display:block}
-  .main{margin-left:0;padding:16px 16px 80px}
-  .settings-grid{grid-template-columns:1fr}
-  .member-fields{grid-template-columns:1fr}
-  .topbar{flex-wrap:wrap;gap:10px;margin-bottom:20px}
-  .page-title{font-size:20px}
-  .publish-btn{width:100%;justify-content:center}
+/* ── Responsive ───────────────────────────────────── */
+@media(max-width:560px){
+  .logo{display:none}
+  .tab .tl{display:none}
+  .tab{padding:0 10px}
+  .pbtn .pl{display:none}
+  .pbtn{padding:0 12px}
+  .main{padding:14px 12px 56px}
+  .mc-fs{grid-template-columns:1fr}
+  .s2col{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
-<!-- Sidebar -->
-<div class="sidebar">
-  <div class="sb-logo">
-    <div class="sb-k">КНЯЗЬ</div>
-    <div class="sb-label">Управление сайтом</div>
-  </div>
-  <nav class="sb-nav">
-    <button class="sb-item active" onclick="switchTab('gallery', this)">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      Галерея
+
+<header class="hdr">
+  <div class="logo">КНЯЗЬ</div>
+  <nav class="tabs" role="tablist">
+    <button class="tab on" role="tab" aria-selected="true"  onclick="go('gallery',this)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <span class="tl">Галерея</span>
     </button>
-    <button class="sb-item" onclick="switchTab('team', this)">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M19 11c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/><path d="M22 21v-1a3 3 0 0 0-3-3h-1"/></svg>
-      Команда
+    <button class="tab" role="tab" aria-selected="false" onclick="go('team',this)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M19 11c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/><path d="M22 21v-1a3 3 0 0 0-3-3h-1"/></svg>
+      <span class="tl">Команда</span>
     </button>
-    <button class="sb-item" onclick="switchTab('services', this)">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-      Услуги — фото
+    <button class="tab" role="tab" aria-selected="false" onclick="go('services',this)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      <span class="tl">Фото услуг</span>
     </button>
-    <button class="sb-item" onclick="switchTab('prices', this)">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-      Цены (YClients)
+    <button class="tab" role="tab" aria-selected="false" onclick="go('prices',this)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+      <span class="tl">Цены</span>
     </button>
-    <button class="sb-item" onclick="switchTab('settings', this)">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Настройки
+    <button class="tab" role="tab" aria-selected="false" onclick="go('settings',this)">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="tl">Настройки</span>
     </button>
   </nav>
-  <div class="sb-bottom">
-    <a href="/" target="_blank" class="sb-item" style="margin:0">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      Открыть сайт
+  <div class="hdr-r">
+    <a href="/" target="_blank" class="ibtn" title="Открыть сайт" aria-label="Открыть сайт">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
     </a>
-    <button class="sb-item" style="margin-top:4px;color:var(--err)" onclick="logout()">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Выйти
+    <button class="ibtn" onclick="logout()" title="Выйти" aria-label="Выйти">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+    <button class="pbtn" id="pub-btn" onclick="publishAll()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+      <span class="pl">Опубликовать</span>
     </button>
   </div>
-</div>
+</header>
 
-<!-- Main -->
-<div class="main">
-  <!-- Topbar -->
-  <div class="topbar">
-    <div class="page-title" id="page-title">Галерея</div>
-    <button class="publish-btn" id="pub-btn" onclick="publishAll()">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
-      Сохранить и опубликовать
-    </button>
-  </div>
+<main class="main">
 
-  <!-- ── GALLERY TAB ── -->
-  <div class="tab-content active" id="tab-gallery">
+  <!-- GALLERY -->
+  <div class="view on" id="v-gallery">
     <div class="card">
-      <div class="card-title">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 5-5 4 4 3-3 6 6"/></svg>
+      <div class="card-hd">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 5-5 4 4 3-3 6 6"/></svg>
         Фотографии галереи
-        <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text-m)" id="gal-count"></span>
+        <span class="card-hd-e" id="gal-cnt" aria-live="polite"></span>
       </div>
-      <div class="gal-grid" id="gal-grid">
-        <!-- populated by JS -->
-      </div>
-      <div style="margin-top:16px">
-        <div class="drop-zone" id="gal-drop" onclick="document.getElementById('gal-file').click()">
-          <input type="file" id="gal-file" accept="image/*" multiple onchange="uploadGallery(this.files)">
-          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <div style="font-size:14px;margin-top:4px">Загрузить фото</div>
-          <div style="font-size:12px;margin-top:2px">JPG, PNG, WebP · перетащите или кликните</div>
-        </div>
-      </div>
+      <div class="gal-grid" id="gal-grid"></div>
+      <label class="dropz" id="gal-drop" tabindex="0" role="button" aria-label="Загрузить фотографии">
+        <input type="file" id="gal-file" accept="image/*" multiple aria-label="Выбрать файлы">
+        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p class="dropz-p">Перетащите или нажмите для загрузки</p>
+        <p class="dropz-s">JPG, PNG, WebP</p>
+      </label>
     </div>
-    <div class="card" style="margin-top:16px">
-      <p style="font-size:12px;color:var(--text-m);line-height:1.7">
-        💡 Перетащите карточки для изменения порядка.<br>
-        Нажмите × чтобы удалить фото.<br>
-        Нажмите <strong>Сохранить и опубликовать</strong> — изменения появятся на сайте через ~2 мин.
+    <div class="card">
+      <p style="font-size:12px;color:var(--text2);line-height:1.8">
+        Перетащите карточки чтобы изменить порядок · × чтобы удалить<br>
+        Нажмите <strong style="color:var(--text)">Опубликовать</strong> — сайт обновится через ~2 мин.
       </p>
     </div>
   </div>
 
-  <!-- ── TEAM TAB ── -->
-  <div class="tab-content" id="tab-team">
+  <!-- TEAM -->
+  <div class="view" id="v-team">
     <div class="card">
-      <div class="card-title">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+      <div class="card-hd">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
         Мастера барбершопа
       </div>
-      <div class="team-list" id="team-list"><!-- populated by JS --></div>
-      <button class="add-member-btn" style="margin-top:14px" onclick="addMember()">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <div class="team-list" id="team-list"></div>
+      <button class="add-btn" onclick="addMember()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Добавить мастера
       </button>
     </div>
   </div>
 
-  <!-- ── SERVICES TAB ── -->
-  <div class="tab-content" id="tab-services">
+  <!-- SERVICE IMAGES -->
+  <div class="view" id="v-services">
     <div class="card">
-      <div class="card-title">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      <div class="card-hd">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
         Изображения услуг
+        <span class="card-hd-e" style="font-size:11px;color:var(--text2)">Нажмите на фото чтобы изменить</span>
       </div>
-      <div class="svc-grid" id="svc-grid"><!-- populated by JS --></div>
+      <div class="svc-wrap" id="svc-grid"></div>
     </div>
   </div>
 
-  <!-- ── PRICES TAB ── -->
-  <div class="tab-content" id="tab-prices">
+  <!-- PRICES -->
+  <div class="view" id="v-prices">
     <div class="card">
-      <div class="card-title">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        Синхронизация с YClients
+      <div class="card-hd">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Прайс из YClients
       </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <div class="sync-row">
         <button class="sync-btn" id="sync-btn" onclick="syncYclients()">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Синхронизировать сейчас
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Синхронизировать
         </button>
-        <span class="sync-status" id="sync-status">Загрузка...</span>
+        <span class="sync-ts" id="sync-ts" aria-live="polite">Загрузка...</span>
       </div>
-      <div id="prices-table-wrap">
-        <p style="color:var(--text-m);font-size:13px">Нажмите «Синхронизировать» чтобы загрузить актуальные цены из YClients.<br>Также цены обновляются автоматически раз в сутки.</p>
-      </div>
-    </div>
-    <div class="card">
-      <p style="font-size:12px;color:var(--text-m);line-height:1.8">
-        ℹ️ Цены загружаются со страницы виджета записи YClients.<br>
-        Если цены не найдены — они могут быть скрыты в виджете. В таком случае используйте ручное редактирование через YClients.
-      </p>
+      <div id="prices-body"></div>
     </div>
   </div>
 
-  <!-- ── SETTINGS TAB ── -->
-  <div class="tab-content" id="tab-settings">
-    <div class="settings-grid">
+  <!-- SETTINGS -->
+  <div class="view" id="v-settings">
+    <div class="s2col">
       <div class="card">
-        <div class="card-title">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="card-hd">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           Пароль входа
         </div>
-        <div class="settings-section">
-          <div class="field-group">
-            <div class="field-label">Новый пароль</div>
-            <input type="password" class="field-input" id="new-pw" placeholder="Введите новый пароль">
+        <div class="set-s">
+          <div class="fl">
+            <label class="fl-l" for="pw1">Новый пароль</label>
+            <input type="password" class="fi" id="pw1" placeholder="Введите новый пароль" autocomplete="new-password">
           </div>
-          <div class="field-group">
-            <div class="field-label">Повторите пароль</div>
-            <input type="password" class="field-input" id="new-pw2" placeholder="Повторите пароль">
+          <div class="fl">
+            <label class="fl-l" for="pw2">Повторите пароль</label>
+            <input type="password" class="fi" id="pw2" placeholder="Повторите пароль" autocomplete="new-password">
           </div>
-          <button class="save-pw-btn" onclick="changePassword()">Сменить пароль</button>
+          <button class="pw-btn" onclick="changePassword()">Сменить пароль</button>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div class="card-hd">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           GitHub и деплой
         </div>
-        <div class="github-note">
-          Публикация на сайте работает через Railway автодеплой из GitHub.<br><br>
-          Необходимые переменные в Railway:<br>
+        <div class="infobox">
+          Публикация через Railway автодеплой из GitHub.<br><br>
+          Переменные в Railway:<br>
           <code>GITHUB_TOKEN</code> — токен с доступом к репо<br>
           <code>GITHUB_REPO</code> — <code>Karif-dev/knyaz-barbershop</code><br>
           <code>GITHUB_BRANCH</code> — <code>main</code><br>
-          <code>SECRET_KEY</code> — любая случайная строка<br><br>
-          После сохранения изменений Railway перезапускается (~2 мин) и обновления появляются на сайте.
+          <code>SECRET_KEY</code> — любая случайная строка
         </div>
+        <div class="warn-box">После сохранения Railway перезапустится ~2 мин — изменения появятся на сайте.</div>
       </div>
     </div>
   </div>
+
+</main>
+
+<div class="toast-r" aria-live="polite" aria-atomic="true">
+  <div class="toast" id="toast" role="status"></div>
 </div>
 
-<!-- Mobile nav -->
-<nav class="mob-nav">
-  <div class="mob-nav-inner">
-    <button class="mob-nav-btn active" onclick="switchTab('gallery',this)">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      Галерея
-    </button>
-    <button class="mob-nav-btn" onclick="switchTab('team',this)">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="19" cy="7" r="2"/><path d="M22 21v-1a3 3 0 0 0-3-3h-1"/></svg>
-      Команда
-    </button>
-    <button class="mob-nav-btn" onclick="switchTab('services',this)">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-      Услуги
-    </button>
-    <button class="mob-nav-btn" onclick="switchTab('prices',this)">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-      Цены
-    </button>
-    <button class="mob-nav-btn" onclick="switchTab('settings',this)">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Настройки
-    </button>
-  </div>
-</nav>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<!-- Hidden file inputs for service images -->
-<input type="file" id="svc-file-input" accept="image/*" style="display:none" onchange="handleSvcUpload(this)">
+<input type="file" id="svc-inp" accept="image/*" style="display:none" onchange="handleSvcUpload(this)">
 
 <script>
+'use strict';
 // ── State ──────────────────────────────────────────────────────────────────
-let cfg = {gallery:[], team:[], service_images:{}, services_prices:{last_sync:null, services:[]}};
+let cfg = {gallery:[],team:[],service_images:{},services_prices:{last_sync:null,services:[]}};
 let pendingSvcKey = null;
+
+// IMPORTANT: keys must match index.html META keys (svc1,svc2,svc3,svc5 + hit)
 const SVC_LABELS = {
-  hit: 'Стрижка + Борода (хит)',
+  hit:  'Стрижка + Борода (хит)',
   svc1: 'Мужская стрижка',
   svc2: 'Стрижка под машинку',
   svc3: 'Стрижка бороды',
-  svc4: 'Воск'
+  svc5: 'Воск'  // NOTE: svc5, not svc4 — matches META in index.html
 };
 
 // ── Init ───────────────────────────────────────────────────────────────────
-async function init() {
-  try {
-    const r = await fetch('/admin/api/config');
-    if (r.status === 401) { window.location = '/admin/login'; return; }
-    cfg = await r.json();
-    renderGallery();
-    renderTeam();
-    renderServices();
-    renderPrices();
-  } catch(e) { toast('Ошибка загрузки конфига', 'err'); }
+async function init(){
+  try{
+    const r=await fetch('/admin/api/config');
+    if(r.status===401){location.href='/admin/login';return}
+    cfg=await r.json();
+    renderGallery();renderTeam();renderServices();renderPrices();
+  }catch(e){toast('Ошибка загрузки конфига','err')}
 }
 
-// ── Tab switching ──────────────────────────────────────────────────────────
-const TAB_TITLES = {gallery:'Галерея', team:'Команда', services:'Услуги — фото', prices:'Цены (YClients)', settings:'Настройки'};
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  // Highlight in sidebar AND mobile nav
-  document.querySelectorAll('.sb-item, .mob-nav-btn').forEach(b => b.classList.remove('active'));
-  // Mark all buttons that triggered this tab (sidebar + mobile nav may share the onclick)
-  document.querySelectorAll(`.sb-item[onclick*="'${name}'"], .mob-nav-btn[onclick*="'${name}'"]`).forEach(b => b.classList.add('active'));
-  if (btn) btn.classList.add('active');
-  document.getElementById('page-title').textContent = TAB_TITLES[name] || name;
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function go(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.getElementById('v-'+name).classList.add('on');
+  document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-selected','false')});
+  btn.classList.add('on');btn.setAttribute('aria-selected','true');
 }
 
 // ── Gallery ────────────────────────────────────────────────────────────────
-function renderGallery() {
-  const grid = document.getElementById('gal-grid');
-  const count = document.getElementById('gal-count');
-  grid.innerHTML = '';
-  count.textContent = cfg.gallery.length + ' фото';
-  cfg.gallery.forEach((url, i) => {
-    const item = document.createElement('div');
-    item.className = 'gal-item';
-    item.draggable = true;
-    item.dataset.index = i;
-    item.innerHTML = `
-      <img src="${url}" alt="" onerror="this.style.opacity='0.2'">
-      <span class="drag-handle" title="Перетащить">
-        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16" opacity=".7"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-      </span>
-      <button class="del-btn" onclick="delGal(${i})" title="Удалить">×</button>
-    `;
-    // Drag events
-    item.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', i); item.style.opacity = '.4'; });
-    item.addEventListener('dragend', e => { item.style.opacity = '1'; grid.querySelectorAll('.gal-item').forEach(el => el.classList.remove('drag-over')); });
-    item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('drag-over'); });
-    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
-    item.addEventListener('drop', e => {
+function renderGallery(){
+  const grid=document.getElementById('gal-grid');
+  const cnt=document.getElementById('gal-cnt');
+  grid.innerHTML='';
+  cnt.textContent=cfg.gallery.length+' фото';
+  cfg.gallery.forEach((url,i)=>{
+    const c=document.createElement('div');
+    c.className='gal-cell';c.draggable=true;c.dataset.i=i;
+    c.innerHTML=`<img src="${esc(url)}" alt="Фото ${i+1}" loading="lazy" onerror="this.style.opacity='.1'">
+      <button class="gal-del" onclick="delGal(${i})" aria-label="Удалить фото ${i+1}">×</button>`;
+    c.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',i);c.style.opacity='.28'});
+    c.addEventListener('dragend',()=>{c.style.opacity='1';grid.querySelectorAll('.gal-cell').forEach(x=>x.classList.remove('drop-ov'))});
+    c.addEventListener('dragover',e=>{e.preventDefault();c.classList.add('drop-ov')});
+    c.addEventListener('dragleave',()=>c.classList.remove('drop-ov'));
+    c.addEventListener('drop',e=>{
       e.preventDefault();
-      const from = parseInt(e.dataTransfer.getData('text/plain'));
-      const to = parseInt(item.dataset.index);
-      if (from !== to) {
-        const arr = [...cfg.gallery];
-        arr.splice(to, 0, arr.splice(from, 1)[0]);
-        cfg.gallery = arr;
-        renderGallery();
-      }
+      const from=+e.dataTransfer.getData('text/plain'),to=+c.dataset.i;
+      if(from!==to){const a=[...cfg.gallery];a.splice(to,0,a.splice(from,1)[0]);cfg.gallery=a;renderGallery()}
     });
-    grid.appendChild(item);
+    grid.appendChild(c);
   });
 }
+function delGal(i){cfg.gallery.splice(i,1);renderGallery()}
 
-function delGal(i) {
-  cfg.gallery.splice(i, 1);
-  renderGallery();
-}
-
-async function uploadGallery(files) {
-  for (const file of files) {
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const r = await fetch('/admin/api/upload', { method: 'POST', body: fd });
-      const d = await r.json();
-      if (d.ok) {
-        cfg.gallery.push(d.url);
-        renderGallery();
-      } else {
-        toast(d.error || 'Ошибка загрузки', 'err');
-      }
-    } catch(e) { toast('Ошибка сети', 'err'); }
+async function uploadGallery(files){
+  for(const f of files){
+    const fd=new FormData();fd.append('file',f);
+    try{
+      const r=await fetch('/admin/api/upload',{method:'POST',body:fd});
+      const d=await r.json();
+      if(d.ok){cfg.gallery.push(d.url);renderGallery()}
+      else toast(d.error||'Ошибка загрузки','err');
+    }catch{toast('Ошибка сети','err')}
   }
 }
-
-// Drag & drop on drop zone
-const dz = document.getElementById('gal-drop');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('active'));
-dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('active'); uploadGallery(e.dataTransfer.files); });
+const gf=document.getElementById('gal-file');
+const dz=document.getElementById('gal-drop');
+gf.addEventListener('change',()=>uploadGallery(gf.files));
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');uploadGallery(e.dataTransfer.files)});
 
 // ── Team ───────────────────────────────────────────────────────────────────
-function renderTeam() {
-  const list = document.getElementById('team-list');
-  list.innerHTML = '';
-  cfg.team.forEach((m, i) => {
-    const div = document.createElement('div');
-    div.className = 'member-card';
-    div.dataset.index = i;
-    div.innerHTML = `
-      <div class="member-photo-wrap" onclick="uploadMemberPhoto(${i})">
-        <img class="member-photo" src="${m.photo || '/dima.jpg'}" alt="">
-        <div class="member-photo-edit">
+function renderTeam(){
+  const list=document.getElementById('team-list');
+  list.innerHTML='';
+  if(!cfg.team.length){
+    list.innerHTML='<div class="empty"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg><p>Мастера пока не добавлены</p></div>';
+    return;
+  }
+  cfg.team.forEach((m,i)=>{
+    const div=document.createElement('div');div.className='mc';
+    div.innerHTML=`
+      <button class="mc-av" onclick="pickPhoto(${i})" aria-label="Сменить фото ${esc(m.name||'мастера')}">
+        <img src="${esc(m.photo||'/dima.jpg')}" alt="${esc(m.name||'Мастер')}" onerror="this.src='/dima.jpg'">
+        <div class="mc-av-ov" aria-hidden="true">
           <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
+      </button>
+      <div class="mc-fs">
+        <div class="fl">
+          <label class="fl-l" for="mn${i}">Имя</label>
+          <input class="fi" id="mn${i}" value="${esc(m.name)}" onchange="cfg.team[${i}].name=this.value" placeholder="Имя" autocomplete="off">
+        </div>
+        <div class="fl">
+          <label class="fl-l" for="mr${i}">Должность</label>
+          <input class="fi" id="mr${i}" value="${esc(m.role)}" onchange="cfg.team[${i}].role=this.value" placeholder="Барбер">
+        </div>
+        <div class="fl fw">
+          <label class="fl-l" for="mb${i}">О мастере</label>
+          <textarea class="fi" id="mb${i}" onchange="cfg.team[${i}].bio=this.value" placeholder="Несколько слов…">${esc(m.bio)}</textarea>
+        </div>
       </div>
-      <div class="member-fields">
-        <div class="field-group">
-          <div class="field-label">Имя</div>
-          <input class="field-input" value="${esc(m.name)}" onchange="cfg.team[${i}].name=this.value" placeholder="Имя мастера">
-        </div>
-        <div class="field-group">
-          <div class="field-label">Должность</div>
-          <input class="field-input" value="${esc(m.role)}" onchange="cfg.team[${i}].role=this.value" placeholder="Мастер барбер">
-        </div>
-        <div class="field-group full">
-          <div class="field-label">О мастере</div>
-          <textarea class="field-input" onchange="cfg.team[${i}].bio=this.value" placeholder="Несколько слов о мастере...">${esc(m.bio)}</textarea>
-        </div>
-      </div>
-      <div class="member-actions">
-        <button class="icon-btn danger" onclick="delMember(${i})" title="Удалить">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      <div>
+        <button class="gbtn dn" onclick="delMember(${i})" aria-label="Удалить мастера">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
-      </div>
-    `;
+      </div>`;
     list.appendChild(div);
   });
 }
-
-function addMember() {
-  cfg.team.push({ id: Date.now(), name: '', role: 'Мастер барбер', bio: '', photo: '/dima.jpg', photo_position: '50% 18%' });
+function addMember(){
+  cfg.team.push({id:Date.now(),name:'',role:'Барбер',bio:'',photo:'/dima.jpg'});
   renderTeam();
+  setTimeout(()=>{const f=document.getElementById('mn'+(cfg.team.length-1));if(f)f.focus()},40);
 }
-
-function delMember(i) {
-  if (!confirm('Удалить мастера?')) return;
-  cfg.team.splice(i, 1);
-  renderTeam();
-}
-
-let pendingMemberPhotoIndex = null;
-function uploadMemberPhoto(i) {
-  pendingMemberPhotoIndex = i;
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = 'image/*';
-  inp.onchange = async function() {
-    const fd = new FormData();
-    fd.append('file', this.files[0]);
-    const r = await fetch('/admin/api/upload', { method: 'POST', body: fd });
-    const d = await r.json();
-    if (d.ok) {
-      cfg.team[pendingMemberPhotoIndex].photo = d.url;
-      renderTeam();
-    }
+function delMember(i){if(!confirm('Удалить мастера?'))return;cfg.team.splice(i,1);renderTeam()}
+function pickPhoto(i){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=async()=>{
+    const fd=new FormData();fd.append('file',inp.files[0]);
+    try{
+      const r=await fetch('/admin/api/upload',{method:'POST',body:fd});
+      const d=await r.json();
+      if(d.ok){cfg.team[i].photo=d.url;renderTeam()}else toast(d.error||'Ошибка','err');
+    }catch{toast('Ошибка сети','err')}
   };
   inp.click();
 }
 
 // ── Services ───────────────────────────────────────────────────────────────
-function renderServices() {
-  const grid = document.getElementById('svc-grid');
-  grid.innerHTML = '';
-  Object.entries(SVC_LABELS).forEach(([key, label]) => {
-    const imgUrl = (cfg.service_images || {})[key] || '/svc1.jpg';
-    const div = document.createElement('div');
-    div.className = 'svc-item';
-    div.innerHTML = `
-      <div class="svc-img-wrap" onclick="openSvcUpload('${key}')">
-        <img src="${imgUrl}" alt="${label}" onerror="this.style.opacity='0.2'">
-        <div class="svc-img-overlay">
-          <svg width="28" height="28" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+function renderServices(){
+  const grid=document.getElementById('svc-grid');
+  grid.innerHTML='';
+  Object.entries(SVC_LABELS).forEach(([key,label])=>{
+    const img=(cfg.service_images||{})[key]||'/svc1.jpg';
+    const card=document.createElement('div');card.className='svc-card';
+    card.innerHTML=`
+      <div class="svc-th" onclick="openSvcUpload('${esc(key)}')"
+           role="button" tabindex="0" aria-label="Изменить фото: ${esc(label)}">
+        <img src="${esc(img)}" alt="${esc(label)}" loading="lazy" onerror="this.style.opacity='.12'">
+        <div class="svc-ov" aria-hidden="true">
+          <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
       </div>
       <div class="svc-info">
-        <div class="svc-name">${label}</div>
-        <div class="svc-img-label">Нажмите чтобы изменить фото</div>
-      </div>
-    `;
-    grid.appendChild(div);
+        <div class="svc-n">${esc(label)}</div>
+        <div class="svc-h">Нажмите чтобы изменить</div>
+      </div>`;
+    card.querySelector('.svc-th').addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();openSvcUpload(key)}
+    });
+    grid.appendChild(card);
   });
 }
-
-function openSvcUpload(key) {
-  pendingSvcKey = key;
-  document.getElementById('svc-file-input').click();
-}
-
-async function handleSvcUpload(input) {
-  if (!input.files[0] || !pendingSvcKey) return;
-  const fd = new FormData();
-  fd.append('file', input.files[0]);
-  const r = await fetch('/admin/api/upload', { method: 'POST', body: fd });
-  const d = await r.json();
-  if (d.ok) {
-    if (!cfg.service_images) cfg.service_images = {};
-    cfg.service_images[pendingSvcKey] = d.url;
-    renderServices();
-    toast('Фото обновлено. Нажмите «Сохранить и опубликовать»', 'ok');
-  } else {
-    toast(d.error || 'Ошибка загрузки', 'err');
-  }
-  input.value = '';
+function openSvcUpload(key){pendingSvcKey=key;document.getElementById('svc-inp').click()}
+async function handleSvcUpload(input){
+  if(!input.files[0]||!pendingSvcKey)return;
+  const fd=new FormData();fd.append('file',input.files[0]);
+  try{
+    const r=await fetch('/admin/api/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){
+      if(!cfg.service_images)cfg.service_images={};
+      cfg.service_images[pendingSvcKey]=d.url;
+      renderServices();
+      toast('Фото обновлено — нажмите «Опубликовать»','ok');
+    }else toast(d.error||'Ошибка загрузки','err');
+  }catch{toast('Ошибка сети','err')}
+  input.value='';
 }
 
 // ── Prices ─────────────────────────────────────────────────────────────────
-function renderPrices() {
-  const sp = cfg.services_prices || {};
-  const status = document.getElementById('sync-status');
-  if (sp.last_sync) {
-    status.textContent = 'Последняя синхронизация: ' + sp.last_sync;
-  } else {
-    status.textContent = 'Синхронизация не проводилась';
+function renderPrices(){
+  const sp=cfg.services_prices||{};
+  const ts=document.getElementById('sync-ts');
+  const body=document.getElementById('prices-body');
+  if(sp.last_sync){
+    ts.innerHTML='<span class="dot-ok" aria-hidden="true"></span>Обновлено: '+esc(sp.last_sync);
+  }else{
+    ts.textContent='Ещё не синхронизировалось';
   }
-  const wrap = document.getElementById('prices-table-wrap');
-  const services = sp.services || [];
-  if (services.length === 0) {
-    wrap.innerHTML = '<p style="color:var(--text-m);font-size:13px">Нажмите «Синхронизировать» чтобы загрузить актуальные цены из YClients.<br>Также цены обновляются автоматически раз в сутки.</p>';
+  const svcs=sp.services||[];
+  if(!svcs.length){
+    body.innerHTML='<div class="empty"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg><p>Нажмите «Синхронизировать» чтобы загрузить цены из YClients</p></div>';
     return;
   }
-  let html = '<table class="prices-table"><thead><tr><th>Услуга</th><th>Цена (₽)</th></tr></thead><tbody>';
-  services.forEach(s => {
-    html += `<tr><td>${esc(s.name)}</td><td><input class="price-input" type="number" value="${s.price || ''}" placeholder="не указана" readonly></td></tr>`;
+  let html='<table class="pt" aria-label="Прайс-лист"><thead><tr><th>Услуга</th><th>Цена</th></tr></thead><tbody>';
+  svcs.forEach(s=>{
+    html+=`<tr><td>${esc(s.name)}</td><td><span class="price-pill">${s.price?s.price.toLocaleString('ru')+' ₽':'—'}</span></td></tr>`;
   });
-  html += '</tbody></table>';
-  wrap.innerHTML = html;
+  html+='</tbody></table>';
+  body.innerHTML=html;
 }
-
-async function syncYclients() {
-  const btn = document.getElementById('sync-btn');
-  btn.classList.add('loading');
-  btn.innerHTML = '<span class="spin"></span> Синхронизирую...';
-  const status = document.getElementById('sync-status');
-  status.textContent = 'Загружаю данные с YClients...';
-  try {
-    const r = await fetch('/admin/api/sync-yclients', { method: 'POST' });
-    const d = await r.json();
-    if (d.ok) {
-      cfg.services_prices = { last_sync: new Date().toLocaleString('ru'), services: d.services };
+async function syncYclients(){
+  const btn=document.getElementById('sync-btn');
+  const ORIG=btn.innerHTML;
+  btn.classList.add('busy');
+  btn.innerHTML='<span class="spin" aria-hidden="true"></span>Синхронизирую…';
+  document.getElementById('sync-ts').textContent='Получаю данные…';
+  try{
+    const r=await fetch('/admin/api/sync-yclients',{method:'POST'});
+    const d=await r.json();
+    if(d.ok){
+      cfg.services_prices={last_sync:new Date().toLocaleString('ru'),services:d.services};
       renderPrices();
-      toast(`Загружено ${d.count} услуг из YClients`, 'ok');
-    } else {
-      toast(d.error || 'Не удалось получить данные', 'err');
-      status.textContent = 'Ошибка синхронизации';
+      toast('Загружено '+d.count+' услуг','ok');
+    }else{
+      toast(d.error||'Не удалось получить данные','err');
+      document.getElementById('sync-ts').textContent='Ошибка синхронизации';
     }
-  } catch(e) { toast('Ошибка сети', 'err'); }
-  btn.classList.remove('loading');
-  btn.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Синхронизировать сейчас';
+  }catch{toast('Ошибка сети','err')}
+  btn.classList.remove('busy');btn.innerHTML=ORIG;
 }
 
 // ── Publish ────────────────────────────────────────────────────────────────
-async function publishAll() {
-  const btn = document.getElementById('pub-btn');
-  btn.classList.add('loading');
-  btn.innerHTML = '<span class="spin" style="border-top-color:#000"></span> Публикую...';
-  try {
-    const r = await fetch('/admin/api/save', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ gallery: cfg.gallery, team: cfg.team, service_images: cfg.service_images })
+async function publishAll(){
+  const btn=document.getElementById('pub-btn');
+  const ORIG=btn.innerHTML;
+  btn.classList.add('busy');
+  btn.innerHTML='<span class="spin" aria-hidden="true"></span>';
+  try{
+    const r=await fetch('/admin/api/save',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({gallery:cfg.gallery,team:cfg.team,service_images:cfg.service_images})
     });
-    const d = await r.json();
-    if (d.ok) {
-      toast(d.pushed ? '✓ Сохранено и отправлено в GitHub. Сайт обновится через ~2 мин.' : '✓ Сохранено локально (GitHub не настроен)', 'ok');
-    } else {
-      toast(d.error || 'Ошибка сохранения', 'err');
-    }
-  } catch(e) { toast('Ошибка сети', 'err'); }
-  btn.classList.remove('loading');
-  btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg> Сохранить и опубликовать';
+    const d=await r.json();
+    if(d.ok){
+      toast(d.pushed?'✓ На GitHub. Сайт обновится через ~2 мин.':'✓ Сохранено (GitHub не настроен)','ok');
+    }else toast(d.error||'Ошибка сохранения','err');
+  }catch{toast('Ошибка сети','err')}
+  btn.classList.remove('busy');btn.innerHTML=ORIG;
 }
 
-// ── Password change ────────────────────────────────────────────────────────
-async function changePassword() {
-  const p1 = document.getElementById('new-pw').value;
-  const p2 = document.getElementById('new-pw2').value;
-  if (!p1) { toast('Введите пароль', 'err'); return; }
-  if (p1 !== p2) { toast('Пароли не совпадают', 'err'); return; }
-  const r = await fetch('/admin/api/save', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ new_password: p1 })
-  });
-  const d = await r.json();
-  if (d.ok) {
-    toast('Пароль изменён', 'ok');
-    document.getElementById('new-pw').value = '';
-    document.getElementById('new-pw2').value = '';
-  } else toast(d.error || 'Ошибка', 'err');
+// ── Password ───────────────────────────────────────────────────────────────
+async function changePassword(){
+  const p1=document.getElementById('pw1').value;
+  const p2=document.getElementById('pw2').value;
+  if(!p1){toast('Введите пароль','err');return}
+  if(p1!==p2){toast('Пароли не совпадают','err');return}
+  try{
+    const r=await fetch('/admin/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_password:p1})});
+    const d=await r.json();
+    if(d.ok){toast('Пароль изменён','ok');document.getElementById('pw1').value='';document.getElementById('pw2').value=''}
+    else toast(d.error||'Ошибка','err');
+  }catch{toast('Ошибка сети','err')}
 }
 
 // ── Utils ──────────────────────────────────────────────────────────────────
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function toast(msg, type) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'toast show ' + (type||'');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 4000);
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+let _tt;
+function toast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast vis '+(type||'');
+  clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('vis'),type==='err'?6000:4000);
 }
+function logout(){location.href='/admin/logout'}
 
-function logout() { window.location = '/admin/logout'; }
-
-// ── Run ────────────────────────────────────────────────────────────────────
 init();
 </script>
 </body>
