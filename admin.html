@@ -130,9 +130,15 @@ img{max-width:100%;display:block}
 }
 .dropz:hover,.dropz.over{border-color:var(--gold);color:var(--gold)}
 .dropz input{display:none}
-.dropz svg{margin:0 auto 8px;opacity:.35}
+.dropz-ico{
+  width:52px;height:52px;margin:0 auto 12px;
+  background:var(--gold-d);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gold);transition:background .16s;
+}
+.dropz:hover .dropz-ico,.dropz.over .dropz-ico{background:rgba(201,162,39,.22)}
 .dropz-p{font-size:13px;font-weight:500}
-.dropz-s{font-size:11.5px;opacity:.55;margin-top:2px}
+.dropz-s{font-size:11.5px;opacity:.5;margin-top:3px}
 
 /* ── Team ────────────────────────────────── */
 .team-list{display:flex;flex-direction:column;gap:10px}
@@ -353,7 +359,9 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
       <div class="gal-grid" id="gal-grid"></div>
       <label class="dropz" id="gal-drop" tabindex="0" role="button" aria-label="Загрузить фотографии">
         <input type="file" id="gal-file" accept="image/*" multiple aria-label="Выбрать файлы">
-        <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="dropz-ico" aria-hidden="true">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
         <p class="dropz-p">Перетащите или нажмите для загрузки</p>
         <p class="dropz-s">JPG, PNG, WebP</p>
       </label>
