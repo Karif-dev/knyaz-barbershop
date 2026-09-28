@@ -202,16 +202,43 @@ def admin_upload():
 
     return jsonify({'ok': True, 'url': f'/{filename}', 'filename': filename})
 
+_playwright_ready = False  # True once chromium is installed
+
+
+def _install_playwright_chromium():
+    """Install Playwright's Chromium at startup in a background thread."""
+    global _playwright_ready
+    import subprocess, sys
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium", "--with-deps"],
+            capture_output=True, text=True, timeout=300
+        )
+        if result.returncode == 0:
+            _playwright_ready = True
+            log.info("Playwright chromium ready")
+        else:
+            log.warning("playwright install failed (rc=%d): %s", result.returncode, result.stderr[-400:])
+    except Exception as e:
+        log.warning("playwright install error: %s", e)
+
+
+# Start Playwright installation immediately when app boots
+threading.Thread(target=_install_playwright_chromium, daemon=True, name="pw-install").start()
+
+
 def _fetch_yclients_services():
     """
-    Fetch services + prices from YClients.
-    Primary source: https://n2527773.yclients.ru/company/2188101/personal/select-services?o=m-1
-    Falls back to other booking API endpoints.
+    Fetch services + prices from the YClients booking SPA.
+    Primary: Playwright headless Chromium renders JS and intercepts API responses.
+    Fallback: plain HTTP (works only if page has SSR/inline JSON).
+    Target URL: https://n2527773.yclients.ru/company/2188101/personal/select-services?o=m-1
     """
     import re
     import json as _json
     ctx = ssl.create_default_context()
     ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+    TARGET_URL = "https://n2527773.yclients.ru/company/2188101/personal/select-services?o=m-1"
 
     def _dedupe(services):
         seen = set(); out = []
@@ -220,10 +247,9 @@ def _fetch_yclients_services():
                 seen.add(s['name']); out.append(s)
         return out
 
-    def _parse_json_blob(raw):
-        """Try to parse services from any JSON string or JSON embedded in HTML."""
+    def _parse_content(raw):
+        """Extract {name, price} services from JSON or HTML string."""
         services = []
-        # Try whole string as JSON first
         try:
             data = _json.loads(raw)
             rows = data.get('data', data) if isinstance(data, dict) else data
@@ -238,9 +264,7 @@ def _fetch_yclients_services():
                 return services
         except Exception:
             pass
-
-        # Regex patterns on raw string (works on both JSON and HTML with embedded JSON)
-        # Pattern A: "title":"NAME" followed by "price_min":NUM within 500 chars
+        # Regex: "title":"NAME" -> "price_min":NUM (within 500 chars)
         for m in re.finditer(r'"title"\s*:\s*"([^"]{2,100})"', raw):
             tail = raw[m.start():m.start()+500]
             pm = re.search(r'"price_min"\s*:\s*(\d+)', tail)
@@ -248,8 +272,7 @@ def _fetch_yclients_services():
                 services.append({"name": m.group(1), "price": int(pm.group(1))})
         if services:
             return services
-
-        # Pattern B: "price_min":NUM near "title":"NAME"
+        # Reverse: "price_min":NUM <- "title":"NAME"
         for m in re.finditer(r'"price_min"\s*:\s*(\d+)', raw):
             if int(m.group(1)) == 0:
                 continue
@@ -259,88 +282,84 @@ def _fetch_yclients_services():
                 services.append({"name": tm.group(1), "price": int(m.group(1))})
         return services
 
+    # Strategy 1: Playwright headless browser
+    if _playwright_ready:
+        try:
+            from playwright.sync_api import sync_playwright
+            log.info("YClients: launching Playwright for %s", TARGET_URL)
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=True, args=[
+                    '--no-sandbox', '--disable-dev-shm-usage',
+                    '--disable-blink-features=AutomationControlled',
+                ])
+                context = browser.new_context(user_agent=ua, locale='ru-RU')
+                page = context.new_page()
+
+                # Intercept API JSON responses
+                captured = []
+                def on_response(resp):
+                    try:
+                        if resp.status == 200 and 'yclients' in resp.url:
+                            ct = resp.headers.get('content-type', '')
+                            if 'json' in ct:
+                                svcs = _parse_content(resp.text())
+                                if svcs:
+                                    captured.extend(svcs)
+                    except Exception:
+                        pass
+                page.on('response', on_response)
+
+                page.goto(TARGET_URL, wait_until='networkidle', timeout=30000)
+                page.wait_for_timeout(3000)  # extra wait for Vue render
+
+                if not captured:
+                    captured = _parse_content(page.content())
+
+                browser.close()
+
+            if captured:
+                log.info("YClients Playwright: got %d services", len(captured))
+                return _dedupe(captured)
+            log.warning("YClients Playwright: page loaded but no services found")
+        except Exception as e:
+            log.warning("YClients Playwright failed: %s", e)
+    else:
+        log.info("YClients: Playwright not ready — using HTTP fallback")
+
+    # Strategy 2: plain HTTP fallback
     def _fetch_url(url, accept='text/html'):
         req = urllib.request.Request(url, headers={
-            "User-Agent": ua,
-            "Accept": accept,
+            "User-Agent": ua, "Accept": accept,
             "Accept-Language": "ru-RU,ru;q=0.9",
             "Referer": "https://n2527773.yclients.ru/",
         })
         with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
             return resp.read().decode('utf-8', errors='ignore')
 
-    # ── Strategy 1: personal booking page (user-specified URL) ──────────────
-    # This page may contain SSR JSON or inline state with full service catalogue.
-    personal_urls = [
-        "https://n2527773.yclients.ru/company/2188101/personal/select-services?o=m-1",
-        "https://n2527773.yclients.ru/company/2188101/personal/select-services",
-    ]
-    for url in personal_urls:
+    for url in [TARGET_URL, "https://n2527773.yclients.ru/company/2188101/"]:
         try:
             html = _fetch_url(url)
-            log.info("YClients personal page: fetched %d bytes from %s", len(html), url)
-
-            # 1a. Look for __INITIAL_STATE__ / __vue_store__ / similar SSR blobs
-            for pat in [
-                r'window\.__INITIAL_STATE__\s*=\s*(\{.+?\})\s*;',
-                r'window\.__vue_store__\s*=\s*(\{.+?\})\s*;',
-                r'window\.__APP_STATE__\s*=\s*(\{.+?\})\s*;',
-                r'window\.__yl_\w+\s*=\s*(\{.+?\})\s*;',
-            ]:
-                m = re.search(pat, html, re.DOTALL)
-                if m:
-                    svcs = _parse_json_blob(m.group(1))
-                    if svcs:
-                        log.info("YClients: %d services from SSR blob", len(svcs))
-                        return _dedupe(svcs)
-
-            # 1b. Extract all <script> tag contents and scan each for service data
-            for script_content in re.findall(r'<script[^>]*>(.*?)</script>', html, re.DOTALL):
-                if 'price_min' in script_content or 'price' in script_content.lower():
-                    svcs = _parse_json_blob(script_content)
-                    if svcs:
-                        log.info("YClients: %d services from <script> tag", len(svcs))
-                        return _dedupe(svcs)
-
-            # 1c. Scan whole HTML for price patterns
-            svcs = _parse_json_blob(html)
+            log.info("YClients HTTP: %d bytes from %s", len(html), url)
+            svcs = _parse_content(html)
             if svcs:
-                log.info("YClients: %d services from HTML scan", len(svcs))
+                log.info("YClients HTTP: got %d services", len(svcs))
                 return _dedupe(svcs)
-
         except Exception as e:
-            log.debug("YClients personal page %s failed: %s", url, e)
+            log.debug("YClients HTTP %s: %s", url, e)
 
-    # ── Strategy 2: public JSON API endpoints ────────────────────────────────
-    json_api_urls = [
+    # Strategy 3: public JSON API
+    for url in [
         "https://api.yclients.com/api/v1/company/2188101/services/?count=200&active=1",
         "https://api.yclients.com/api/v1/book_services/2527773/?show_all=1",
-        "https://api.yclients.com/api/v1/book_services/2527773/",
-    ]
-    for url in json_api_urls:
+    ]:
         try:
             raw = _fetch_url(url, accept='application/json')
-            svcs = _parse_json_blob(raw)
+            svcs = _parse_content(raw)
             if svcs:
-                log.info("YClients: %d services from API %s", len(svcs), url)
+                log.info("YClients API: got %d services from %s", len(svcs), url)
                 return _dedupe(svcs)
         except Exception as e:
-            log.debug("YClients API %s failed: %s", url, e)
-
-    # ── Strategy 3: other booking pages ─────────────────────────────────────
-    other_urls = [
-        "https://n2527773.yclients.ru/company/2188101/select-service?iframe=1&lang=ru-RU",
-        "https://n2527773.yclients.ru/company/2188101/",
-    ]
-    for url in other_urls:
-        try:
-            html = _fetch_url(url)
-            svcs = _parse_json_blob(html)
-            if svcs:
-                log.info("YClients: %d services from fallback %s", len(svcs), url)
-                return _dedupe(svcs)
-        except Exception as e:
-            log.debug("YClients fallback %s failed: %s", url, e)
+            log.debug("YClients API %s: %s", url, e)
 
     log.warning("YClients: all strategies exhausted — no services found")
     return []
