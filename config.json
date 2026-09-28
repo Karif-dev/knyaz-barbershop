@@ -24,12 +24,8 @@
     "svc4": "/upload_9a2797e6.jpg"
   },
   "services_prices": {
-    "last_sync": "2026-09-28 01:12",
+    "last_sync": "2026-09-28 01:24",
     "services": [
-      {
-        "name": "English",
-        "price": 0
-      },
       {
         "name": "Мужская стрижка",
         "price": 1500
