@@ -135,11 +135,21 @@ textarea.field-input{resize:vertical;min-height:70px}
 .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.15);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ── Mobile nav ── */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:20;padding:0 4px env(safe-area-inset-bottom,0px)}
+.mob-nav-inner{display:flex;justify-content:space-around}
+.mob-nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;font-size:10px;color:var(--text-m);background:none;border:none;flex:1;transition:color .2s}
+.mob-nav-btn svg{width:20px;height:20px}
+.mob-nav-btn.active{color:var(--gold)}
 @media(max-width:640px){
   .sidebar{display:none}
-  .main{margin-left:0;padding:20px}
+  .mob-nav{display:block}
+  .main{margin-left:0;padding:16px 16px 80px}
   .settings-grid{grid-template-columns:1fr}
   .member-fields{grid-template-columns:1fr}
+  .topbar{flex-wrap:wrap;gap:10px;margin-bottom:20px}
+  .page-title{font-size:20px}
+  .publish-btn{width:100%;justify-content:center}
 }
 </style>
 </head>
@@ -315,6 +325,32 @@ textarea.field-input{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<!-- Mobile nav -->
+<nav class="mob-nav">
+  <div class="mob-nav-inner">
+    <button class="mob-nav-btn active" onclick="switchTab('gallery',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Галерея
+    </button>
+    <button class="mob-nav-btn" onclick="switchTab('team',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="19" cy="7" r="2"/><path d="M22 21v-1a3 3 0 0 0-3-3h-1"/></svg>
+      Команда
+    </button>
+    <button class="mob-nav-btn" onclick="switchTab('services',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Услуги
+    </button>
+    <button class="mob-nav-btn" onclick="switchTab('prices',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+      Цены
+    </button>
+    <button class="mob-nav-btn" onclick="switchTab('settings',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Настройки
+    </button>
+  </div>
+</nav>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -351,8 +387,11 @@ const TAB_TITLES = {gallery:'Галерея', team:'Команда', services:'�
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  // Highlight in sidebar AND mobile nav
+  document.querySelectorAll('.sb-item, .mob-nav-btn').forEach(b => b.classList.remove('active'));
+  // Mark all buttons that triggered this tab (sidebar + mobile nav may share the onclick)
+  document.querySelectorAll(`.sb-item[onclick*="'${name}'"], .mob-nav-btn[onclick*="'${name}'"]`).forEach(b => b.classList.add('active'));
+  if (btn) btn.classList.add('active');
   document.getElementById('page-title').textContent = TAB_TITLES[name] || name;
 }
 
@@ -554,7 +593,7 @@ function renderPrices() {
   }
   let html = '<table class="prices-table"><thead><tr><th>Услуга</th><th>Цена (₽)</th></tr></thead><tbody>';
   services.forEach(s => {
-    html += `<tr><td>${esc(s.name)}</td><td><input class="price-input" type="number" value="${s.price}" readonly></td></tr>`;
+    html += `<tr><td>${esc(s.name)}</td><td><input class="price-input" type="number" value="${s.price || ''}" placeholder="не указана" readonly></td></tr>`;
   });
   html += '</tbody></table>';
   wrap.innerHTML = html;
