@@ -1032,7 +1032,7 @@ body {
   <div class="svc-hd rv">
     <div><p class="eyebrow">Наши услуги</p><div class="gold-bar"></div><h2 class="sec-title">Прайс-лист</h2></div>
   </div>
-  <div class="svc-grid">
+  <div class="svc-grid" id="svc-grid">
     <!-- Hit card: Стрижка + борода -->
     <div class="svc-hit" onclick="openBooking('https://n2527773.yclients.ru/company/2188101/personal/select-master?o=s31353315','Стрижка + Борода')" role="button" tabindex="0" aria-label="Записаться на стрижку + борода">
       <div class="svc-hit-img">
@@ -1395,45 +1395,112 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBooking
 // ── Dynamic site updates from config.json ───────────────────────────────
 (function(){
   fetch('/api/config').then(r=>r.json()).then(function(cfg){
-    // Update service images
-    if(cfg.service_images){
-      var si = cfg.service_images;
-      var hitImg = document.querySelector('.svc-hit-img img');
-      if(hitImg && si.hit) hitImg.src = si.hit;
-      var cards = document.querySelectorAll('.svc-card');
-      var keys = ['svc1','svc2','svc3','svc4'];
-      cards.forEach(function(card, i){
-        if(si[keys[i]]){ var img = card.querySelector('.svc-img img'); if(img) img.src = si[keys[i]]; }
+    var si = cfg.service_images || {};
+
+    // ── Services: fully dynamic from YClients prices ──
+    var sp = cfg.services_prices;
+    if(sp && sp.services && sp.services.length > 0){
+      var grid = document.getElementById('svc-grid');
+      if(grid){
+        var CLK = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:3px"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="6.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+        var BASE = 'https://n2527773.yclients.ru/company/2188101/personal/select-master';
+        // Known service metadata (image, desc, duration, YClients booking URL)
+        // New services from YClients appear automatically with a generic card
+        var META = {
+          'Мужская стрижка':        {k:'svc1',img:'/svc1.jpg',desc:'Классика или авторская под тип лица. Мытьё и укладка включены.',time:'40 мин',url:BASE+'?o=s31353201'},
+          'Стрижка под машинку':    {k:'svc2',img:'/svc2.jpg',desc:'Чёткий контур, идеальная длина. Быстро и точно.',time:'20 мин',url:BASE+'?o=s31353264'},
+          'Стрижка бороды':         {k:'svc3',img:'/svc3.jpg',desc:'Оформление и коррекция формы. Мастер подберёт стиль.',time:'30 мин',url:BASE+'?o=s31353294'},
+          'Стрижка+стрижка бороды': {k:'hit', img:'/svc4.jpg',desc:'Полный комплекс за один визит. Стрижка и борода от одного мастера — целостный образ.',time:'1 ч 10 мин',url:BASE+'?o=s31353315',hit:true},
+          'Воск':                   {k:'svc5',img:'/svc5.jpg',desc:'Укладка воском. Стойкий образ на весь день.',time:'15 мин',url:BASE+'?o=s31353321'}
+        };
+
+        // Separate hit card from regular cards
+        var hitSvc = null, regSvcs = [];
+        sp.services.forEach(function(s){
+          var m = META[s.name];
+          if(m && m.hit) hitSvc = s; else regSvcs.push(s);
+        });
+
+        // Calculate savings for hit card dynamically
+        var hairP = 0, beardP = 0;
+        sp.services.forEach(function(s){
+          if(s.name==='Мужская стрижка') hairP = s.price;
+          if(s.name==='Стрижка бороды') beardP = s.price;
+        });
+
+        var html = '';
+
+        // Hit card
+        if(hitSvc){
+          var hm = META[hitSvc.name];
+          var himg = si[hm.k] || hm.img;
+          var sav = (hairP+beardP)>0 ? (hairP+beardP).toLocaleString('ru')+' ₽ отдельно' : '';
+          html += '<div class="svc-hit" onclick="openBooking(\''+esc(hm.url)+'\',\''+esc(hitSvc.name)+'\')" role="button" tabindex="0" aria-label="Записаться на стрижку + борода">'
+            +'<div class="svc-hit-img"><img src="'+esc(himg)+'" alt="'+esc(hitSvc.name)+'" loading="lazy"></div>'
+            +'<div class="svc-hit-body">'
+            +'<div class="svc-hit-badge">★ Выгодно</div>'
+            +'<div class="svc-hit-name">Стрижка<br>+ Борода</div>'
+            +'<div class="svc-hit-desc">'+esc(hm.desc)+'</div>'
+            +'<div class="svc-hit-foot"><div class="svc-hit-meta">'
+            +'<span class="svc-time-badge" style="font-size:10px">'+CLK+hm.time+'</span>'
+            +(sav?'<span class="svc-hit-savings">'+sav+'</span>':'')
+            +'</div><span class="svc-hit-price">'+hitSvc.price.toLocaleString('ru')+' ₽</span>'
+            +'</div></div></div>';
+        }
+
+        // Regular cards (known + any new services from YClients)
+        regSvcs.forEach(function(s){
+          var m = META[s.name] || {k:null,img:'/svc1.jpg',desc:'',time:'',url:BASE};
+          var img = (m.k && si[m.k]) || m.img;
+          html += '<div class="svc-card" onclick="openBooking(\''+esc(m.url)+'\',\''+esc(s.name)+'\')" role="button" tabindex="0" aria-label="Записаться: '+esc(s.name)+'">'
+            +'<div class="svc-img"><img src="'+esc(img)+'" alt="'+esc(s.name)+'" loading="lazy"></div>'
+            +'<div class="svc-body">'
+            +'<div class="svc-title">'+esc(s.name)+'</div>'
+            +(m.desc?'<div class="svc-desc">'+esc(m.desc)+'</div>':'')
+            +'<div class="svc-foot">'
+            +(m.time?'<span class="svc-time-badge">'+CLK+m.time+'</span>':'')
+            +'<span class="svc-price-badge">'+s.price.toLocaleString('ru')+' ₽</span>'
+            +'</div></div></div>';
+        });
+
+        grid.innerHTML = html;
+        grid.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
+      }
+    } else {
+      // No prices synced yet — just update images on the hardcoded cards
+      if(si.hit){ var hi=document.querySelector('.svc-hit-img img'); if(hi) hi.src=si.hit; }
+      var cards=document.querySelectorAll('.svc-card');
+      ['svc1','svc2','svc3','svc4'].forEach(function(k,i){
+        if(si[k]&&cards[i]){ var img=cards[i].querySelector('.svc-img img'); if(img) img.src=si[k]; }
       });
     }
-    // Update team
+
+    // ── Team ──
     if(cfg.team && cfg.team.length > 0){
-      var grid = document.getElementById('team-grid-dyn');
-      if(grid){
-        grid.innerHTML = cfg.team.map(function(m){
+      var tgrid = document.getElementById('team-grid-dyn');
+      if(tgrid){
+        tgrid.innerHTML = cfg.team.map(function(m){
           return '<div class="team-card rv" onclick="openBooking()" role="button" tabindex="0" aria-label="Записаться к '+esc(m.name)+'">'
             + '<div class="team-photo"><img src="'+esc(m.photo||'/dima.jpg')+'" alt="'+esc(m.name)+'" style="object-position:'+esc(m.photo_position||'50% 18%')+'" loading="lazy"></div>'
             + '<div class="team-info"><div class="team-name">'+esc(m.name)+'</div>'
             + '<div class="team-role">'+esc(m.role)+'</div>'
             + '<div class="team-bio">'+esc(m.bio)+'</div></div></div>';
         }).join('');
-        // Re-observe new .rv elements
-        grid.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
+        tgrid.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
       }
     }
-    // Update gallery
+
+    // ── Gallery ──
     if(cfg.gallery && cfg.gallery.length > 0){
       var wrap = document.querySelector('.gal-slider-wrap');
       if(wrap){
         wrap.innerHTML = cfg.gallery.map(function(url){
           return '<div class="gal-slide"><img src="'+esc(url)+'" alt="Работа барбершопа" loading="lazy"></div>';
         }).join('');
-      // Update dots FIRST so initGallery picks them up
-      var dotsWrap = document.querySelector('.gal-dots');
-      if(dotsWrap){
-        dotsWrap.innerHTML = cfg.gallery.map(function(_,i){ return '<button class="gal-dot'+(i===0?' active':'')+'"></button>'; }).join('');
-      }
-        // Re-init gallery slider
+        var dotsWrap = document.querySelector('.gal-dots');
+        if(dotsWrap){
+          dotsWrap.innerHTML = cfg.gallery.map(function(_,i){ return '<button class="gal-dot'+(i===0?' active':'')+'"></button>'; }).join('');
+        }
         initGallery(wrap);
       }
     }
