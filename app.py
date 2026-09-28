@@ -257,29 +257,42 @@ def _fetch_yclients_services():
                 for item in rows:
                     if isinstance(item, dict):
                         name = (item.get('title') or item.get('name') or '').strip()
-                        price = item.get('price_min') or item.get('price') or item.get('cost') or 0
-                        if name and price and int(price) > 0:
-                            services.append({"name": name, "price": int(price)})
+                        if not name:
+                            continue
+                        # price_min=0 means "price on request" or range — fall back to price_max
+                        price = int(item.get('price_min') or 0)
+                        if price == 0:
+                            price = int(item.get('price_max') or item.get('price') or item.get('cost') or 0)
+                        if price > 0:
+                            services.append({"name": name, "price": price})
             if services:
                 return services
         except Exception:
             pass
-        # Regex: "title":"NAME" -> "price_min":NUM (within 500 chars)
+        # Regex: "title":"NAME" near "price_min" or "price_max" within 600 chars
+        price_pats = [r'"price_min"\s*:\s*(\d+)', r'"price_max"\s*:\s*(\d+)',
+                      r'"price"\s*:\s*(\d+)', r'"cost"\s*:\s*(\d+)']
         for m in re.finditer(r'"title"\s*:\s*"([^"]{2,100})"', raw):
-            tail = raw[m.start():m.start()+500]
-            pm = re.search(r'"price_min"\s*:\s*(\d+)', tail)
-            if pm and int(pm.group(1)) > 0:
-                services.append({"name": m.group(1), "price": int(pm.group(1))})
+            tail = raw[m.start():m.start()+600]
+            price = 0
+            for pp in price_pats:
+                pm = re.search(pp, tail)
+                if pm and int(pm.group(1)) > 0:
+                    price = int(pm.group(1))
+                    break
+            if price > 0:
+                services.append({"name": m.group(1), "price": price})
         if services:
             return services
-        # Reverse: "price_min":NUM <- "title":"NAME"
-        for m in re.finditer(r'"price_min"\s*:\s*(\d+)', raw):
-            if int(m.group(1)) == 0:
-                continue
-            chunk = raw[max(0, m.start()-500):m.start()+100]
-            tm = re.search(r'"title"\s*:\s*"([^"]{2,100})"', chunk)
-            if tm:
-                services.append({"name": tm.group(1), "price": int(m.group(1))})
+        # Reverse scan
+        for pp in price_pats:
+            for m in re.finditer(pp, raw):
+                if int(m.group(1)) == 0:
+                    continue
+                chunk = raw[max(0, m.start()-600):m.start()+100]
+                tm = re.search(r'"title"\s*:\s*"([^"]{2,100})"', chunk)
+                if tm:
+                    services.append({"name": tm.group(1), "price": int(m.group(1))})
         return services
 
     # Strategy 1: Playwright headless browser
