@@ -202,31 +202,100 @@ def admin_upload():
 
     return jsonify({'ok': True, 'url': f'/{filename}', 'filename': filename})
 
+def _fetch_yclients_services():
+    """Try multiple strategies to get services+prices from YClients."""
+    import re
+    import json as _json
+    ctx = ssl.create_default_context()
+    ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+
+    # Strategy 1: YClients public booking API (returns JSON directly)
+    api_urls = [
+        "https://api.yclients.com/api/v1/book_services/2527773/?show_all=1",
+        "https://api.yclients.com/api/v1/book_services/2527773/",
+    ]
+    for api_url in api_urls:
+        try:
+            req = urllib.request.Request(api_url, headers={
+                "User-Agent": ua,
+                "Accept": "application/json",
+                "Accept-Language": "ru-RU,ru;q=0.9",
+            })
+            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+                data = _json.loads(resp.read().decode('utf-8', errors='ignore'))
+            # Response shape: {"success": true, "data": [...]} or list
+            rows = data.get('data', data) if isinstance(data, dict) else data
+            services = []
+            if isinstance(rows, list):
+                for item in rows:
+                    if isinstance(item, dict):
+                        name = item.get('title') or item.get('name') or ''
+                        price = item.get('price_min') or item.get('price') or 0
+                        if name and price:
+                            services.append({"name": name, "price": int(price)})
+            if services:
+                return services
+        except Exception as e:
+            log.debug("YClients API %s failed: %s", api_url, e)
+
+    # Strategy 2: scrape the category/service selection page (static-ish HTML)
+    scrape_urls = [
+        "https://n2527773.yclients.ru/company/2188101/select-service?iframe=1&lang=ru-RU",
+        "https://n2527773.yclients.ru/company/2188101/menu?lang=ru-RU",
+    ]
+    for url in scrape_urls:
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": ua,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "ru-RU,ru;q=0.9",
+            })
+            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+                html = resp.read().decode('utf-8', errors='ignore')
+
+            services = []
+            # Pattern 1: "title":"...", ... "price_min":NNN
+            for m in re.finditer(r'"title"\s*:\s*"([^"]{2,80})"', html):
+                # look for price_min nearby (within 300 chars)
+                tail = html[m.start():m.start()+300]
+                pm = re.search(r'"price_min"\s*:\s*(\d+)', tail)
+                if pm and int(pm.group(1)) > 0:
+                    services.append({"name": m.group(1), "price": int(pm.group(1))})
+
+            # Pattern 2: "price_min":NNN, ... "title":"..."
+            if not services:
+                for m in re.finditer(r'"price_min"\s*:\s*(\d+)', html):
+                    if int(m.group(1)) == 0:
+                        continue
+                    tail = html[max(0, m.start()-300):m.start()+300]
+                    tm = re.search(r'"title"\s*:\s*"([^"]{2,80})"', tail)
+                    if tm:
+                        services.append({"name": tm.group(1), "price": int(m.group(1))})
+
+            if services:
+                # Deduplicate by name
+                seen = set()
+                uniq = []
+                for s in services:
+                    if s['name'] not in seen:
+                        seen.add(s['name'])
+                        uniq.append(s)
+                return uniq
+        except Exception as e:
+            log.debug("YClients scrape %s failed: %s", url, e)
+
+    return []
+
+
 @app.route('/admin/api/sync-yclients', methods=['POST'])
 @admin_required
 def admin_sync_yclients():
-    """Scrape services & prices from YClients widget page."""
+    """Sync services & prices from YClients."""
     try:
-        import re
-        widget_url = "https://n2527773.yclients.ru/company/2188101/select-master?iframe=1&lang=ru-RU"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; knyaz-bot/1.0)",
-            "Accept": "text/html,application/xhtml+xml",
-        }
-        req = urllib.request.Request(widget_url, headers=headers)
-        ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
-            html = resp.read().decode('utf-8', errors='ignore')
-
-        # Try to extract JSON data (YClients embeds it in script tags)
-        services = []
-        matches = re.findall(r'"title"\s*:\s*"([^"]+)"[^}]*"price_min"\s*:\s*(\d+)', html)
-        if matches:
-            for title, price in matches:
-                services.append({"name": title, "price": int(price)})
-
+        services = _fetch_yclients_services()
         if not services:
-            return jsonify({'ok': False, 'error': 'Данные не найдены на странице. Попробуйте позже.'})
+            return jsonify({'ok': False, 'error': 'Не удалось получить данные с YClients. '
+                            'Возможно, сервис временно недоступен. Попробуйте позже.'})
 
         cfg = load_config()
         cfg['services_prices'] = {
@@ -235,9 +304,7 @@ def admin_sync_yclients():
         }
         save_config(cfg)
         push_to_github(CONFIG_FILE, "auto: sync yclients prices")
-
         return jsonify({'ok': True, 'services': services, 'count': len(services)})
-
     except Exception as e:
         log.error("YClients sync error: %s", e)
         return jsonify({'ok': False, 'error': str(e)})
@@ -250,6 +317,12 @@ _SERVICE_IMAGES = [
     ("svc3.jpg", "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=600&q=75&auto=format&fit=crop"),
     ("svc4.jpg", "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=600&q=75&auto=format&fit=crop"),
     ("svc5.jpg", "https://images.unsplash.com/photo-1493256338651-d82f7acb2b38?w=600&q=75&auto=format&fit=crop"),
+    # Gallery work photos (barbershop cuts, beards, styling — different from service card images)
+    ("gal1.jpg", "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=800&q=80&auto=format&fit=crop"),
+    ("gal2.jpg", "https://images.unsplash.com/photo-1534297635766-a262cdcb8ee4?w=800&q=80&auto=format&fit=crop"),
+    ("gal3.jpg", "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?w=800&q=80&auto=format&fit=crop"),
+    ("gal4.jpg", "https://images.unsplash.com/photo-1580518337843-f959e992563b?w=800&q=80&auto=format&fit=crop"),
+    ("gal5.jpg", "https://images.unsplash.com/photo-1553521041-e56f0ce9c0b4?w=800&q=80&auto=format&fit=crop"),
 ]
 
 def _download_assets():
@@ -286,18 +359,7 @@ def _yclients_loop():
     time.sleep(60)  # wait 1 min after startup
     while True:
         try:
-            # Reuse the sync logic
-            import re
-            widget_url = "https://n2527773.yclients.ru/company/2188101/select-master?iframe=1&lang=ru-RU"
-            headers = {"User-Agent": "Mozilla/5.0 (compatible; knyaz-bot/1.0)"}
-            req = urllib.request.Request(widget_url, headers=headers)
-            ctx = ssl.create_default_context()
-            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
-                html = resp.read().decode('utf-8', errors='ignore')
-            services = []
-            matches = re.findall(r'"title"\s*:\s*"([^"]+)"[^}]*"price_min"\s*:\s*(\d+)', html)
-            for title, price in matches:
-                services.append({"name": title, "price": int(price)})
+            services = _fetch_yclients_services()
             if services:
                 cfg = load_config()
                 cfg['services_prices'] = {
@@ -306,6 +368,8 @@ def _yclients_loop():
                 }
                 save_config(cfg)
                 log.info("YClients auto-sync: %d services updated", len(services))
+            else:
+                log.warning("YClients auto-sync: no services found")
         except Exception as e:
             log.warning("YClients auto-sync failed: %s", e)
         time.sleep(24 * 60 * 60)
