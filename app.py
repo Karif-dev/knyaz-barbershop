@@ -503,14 +503,32 @@ threading.Thread(target=_download_assets, daemon=True, name="asset-dl").start()
 # ── Background updaters ───────────────────────────────────────────────────────
 
 def _reviews_loop():
-    time.sleep(10)
+    """Auto-update Yandex reviews daily in 00:00–01:00 MSK window (30 min after YClients)."""
+    import datetime, random
+    MSK_OFFSET = 3
+
     while True:
+        now_utc = datetime.datetime.utcnow()
+        now_msk = now_utc + datetime.timedelta(hours=MSK_OFFSET)
+
+        if now_msk.hour == 0:
+            jitter = random.randint(1800, 3600)  # 30–60 min offset inside window
+            time.sleep(jitter)
+        else:
+            next_midnight = (now_msk + datetime.timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0)
+            wait = (next_midnight - now_msk).total_seconds() + random.randint(1800, 3600)
+            log.info("Reviews auto-sync: next run in %.0f min (MSK midnight window)", wait / 60)
+            time.sleep(wait)
+
         try:
             import update_reviews
             update_reviews.main()
+            log.info("Reviews auto-sync: done")
         except Exception as exc:
             log.warning("Reviews update failed: %s", exc)
-        time.sleep(24 * 60 * 60)
+
+        time.sleep(23 * 60 * 60)
 
 def _yclients_loop():
     """Auto-sync YClients services + prices once a day in 00:00–01:00 MSK window."""
