@@ -352,7 +352,7 @@ def _fetch_yclients_services():
                     pass
             page.on('response', on_response)
 
-            page.goto(TARGET_URL, wait_until='networkidle', timeout=30000)
+            page.goto(TARGET_URL, wait_until='networkidle', timeout=60000)
             page.wait_for_timeout(3000)  # extra wait for Vue render
 
             if not captured:
@@ -513,9 +513,27 @@ def _reviews_loop():
         time.sleep(24 * 60 * 60)
 
 def _yclients_loop():
-    """Auto-sync YClients prices every 24h."""
-    time.sleep(60)  # wait 1 min after startup
+    """Auto-sync YClients services + prices once a day in 00:00–01:00 MSK window."""
+    import datetime, random
+    MSK_OFFSET = 3  # UTC+3
+
     while True:
+        now_utc = datetime.datetime.utcnow()
+        now_msk = now_utc + datetime.timedelta(hours=MSK_OFFSET)
+
+        if now_msk.hour == 0:
+            # Already inside the midnight window — run after small jitter
+            jitter = random.randint(0, 300)
+            time.sleep(jitter)
+        else:
+            # Sleep until next midnight MSK + random jitter (0–55 min)
+            next_midnight = (now_msk + datetime.timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0)
+            wait = (next_midnight - now_msk).total_seconds() + random.randint(0, 3300)
+            log.info("YClients auto-sync: next run in %.0f min (MSK midnight window)",
+                     wait / 60)
+            time.sleep(wait)
+
         try:
             services = _fetch_yclients_services()
             if services:
@@ -525,12 +543,15 @@ def _yclients_loop():
                     "services": services
                 }
                 save_config(cfg)
+                push_to_github(CONFIG_FILE, "auto: sync yclients prices+services")
                 log.info("YClients auto-sync: %d services updated", len(services))
             else:
                 log.warning("YClients auto-sync: no services found")
         except Exception as e:
             log.warning("YClients auto-sync failed: %s", e)
-        time.sleep(24 * 60 * 60)
+
+        # Sleep 23h before re-checking the window (avoids double-run in same night)
+        time.sleep(23 * 60 * 60)
 
 threading.Thread(target=_reviews_loop, daemon=True, name="reviews-updater").start()
 threading.Thread(target=_yclients_loop, daemon=True, name="yclients-sync").start()
