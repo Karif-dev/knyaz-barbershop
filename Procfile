@@ -1,1 +1,1 @@
-web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 2 --error-logfile -
+web: sh -c "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 2 2>&1"
