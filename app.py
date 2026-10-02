@@ -12,7 +12,7 @@ from io import BytesIO
 
 from flask import Flask, send_from_directory, request, jsonify, session, redirect, url_for, abort
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=__import__('sys').stdout)
 log = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -480,7 +480,6 @@ _SERVICE_IMAGES = [
     ("gal2.jpg", "https://images.unsplash.com/photo-1534297635766-a262cdcb8ee4?w=800&q=80&auto=format&fit=crop"),
     ("gal3.jpg", "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?w=800&q=80&auto=format&fit=crop"),
     ("gal4.jpg", "https://images.unsplash.com/photo-1580518337843-f959e992563b?w=800&q=80&auto=format&fit=crop"),
-    ("gal5.jpg", "https://images.unsplash.com/photo-1553521041-e56f0ce9c0b4?w=800&q=80&auto=format&fit=crop"),
 ]
 
 def _download_assets():
@@ -496,7 +495,7 @@ def _download_assets():
                     f.write(resp.read())
             log.info("Downloaded %s", fname)
         except Exception as exc:
-            log.warning("Could not download %s: %s", fname, exc)
+            log.debug("Could not download %s: %s", fname, exc)
 
 threading.Thread(target=_download_assets, daemon=True, name="asset-dl").start()
 
