@@ -470,33 +470,47 @@ def admin_save_prices():
 
 # ── Background updaters ───────────────────────────────────────────────────────
 
+def _sync_reviews():
+    """Fetch Yandex rating/count, rewrite index.html and push it to GitHub
+    (иначе правка пропадёт при следующем деплое Railway)."""
+    import update_reviews
+    res = update_reviews.sync()
+    if res.get("ok") and res.get("changed"):
+        push_to_github(os.path.join(BASE_DIR, 'index.html'), "auto: sync yandex reviews")
+    return res
+
 def _reviews_loop():
-    """Auto-update Yandex reviews daily in 00:00–01:00 MSK window (30 min after YClients)."""
+    """Auto-update Yandex reviews: once shortly after start, then daily ~00:30-01:00 MSK."""
     import datetime, random
     MSK_OFFSET = 3
 
+    time.sleep(120)  # first run right after deploy, so a fix shows up without waiting for night
     while True:
-        now_utc = datetime.datetime.utcnow()
-        now_msk = now_utc + datetime.timedelta(hours=MSK_OFFSET)
-
-        if now_msk.hour == 0:
-            jitter = random.randint(1800, 3600)  # 30–60 min offset inside window
-            time.sleep(jitter)
-        else:
-            next_midnight = (now_msk + datetime.timedelta(days=1)).replace(
-                hour=0, minute=0, second=0, microsecond=0)
-            wait = (next_midnight - now_msk).total_seconds() + random.randint(1800, 3600)
-            log.info("Reviews auto-sync: next run in %.0f min (MSK midnight window)", wait / 60)
-            time.sleep(wait)
-
         try:
-            import update_reviews
-            update_reviews.main()
-            log.info("Reviews auto-sync: done")
-        except Exception as exc:
-            log.warning("Reviews update failed: %s", exc)
+            res = _sync_reviews()
+            if res.get("ok"):
+                log.info("Reviews auto-sync: %s", res)
+            else:
+                log.warning("Reviews auto-sync failed: %s", res.get("error"))
+        except BaseException as exc:  # SystemExit etc. must never kill this thread
+            log.warning("Reviews update crashed: %r", exc)
 
-        time.sleep(23 * 60 * 60)
+        now_msk = datetime.datetime.utcnow() + datetime.timedelta(hours=MSK_OFFSET)
+        next_run = (now_msk + datetime.timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        wait = (next_run - now_msk).total_seconds() + random.randint(1800, 3600)
+        log.info("Reviews auto-sync: next run in %.0f min", wait / 60)
+        time.sleep(wait)
+
+@app.route('/admin/api/sync-reviews', methods=['POST'])
+@admin_required
+def admin_sync_reviews():
+    """Manual trigger: pull rating/count from Yandex Maps now."""
+    try:
+        return jsonify(_sync_reviews())
+    except Exception as e:
+        log.error("Reviews sync error: %s", e)
+        return jsonify({'ok': False, 'error': str(e)})
 
 def _yclients_loop():
     """Auto-sync YClients services + prices once a day in 00:00–01:00 MSK window."""
