@@ -131,11 +131,6 @@
 .review-source { font-size: 11px; color: var(--text-m); letter-spacing: .08em; text-transform: uppercase; }
 .reviews-more { display: block; text-align: center; margin-top: 32px; font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.45); text-decoration: none; }
 .reviews-more:hover { color: rgba(255,255,255,.8); }
-/* Official Yandex widget: reviews/rating/count stay current without headless scraping. */
-.reviews-live-hint { color: var(--text-m); line-height: 1.7; font-size: 14px; max-width: 650px; margin-top: 20px; }
-.yandex-reviews-frame { width: min(100%, 650px); margin: 30px auto 0; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: #fff; }
-.yandex-reviews-frame iframe { display: block; width: 100%; height: 760px; border: 0; }
-@media (max-width: 640px) { .yandex-reviews-frame iframe { height: 620px; } }
 
 @media(max-width:768px){
   .reviews-sec { padding: 56px 20px; }
@@ -1126,15 +1121,54 @@ body {
     <p class="sec-label rv">Отзывы гостей</p>
     <div class="gold-bar rv"></div>
     <h2 class="sec-title rv">Что говорят о нас</h2>
-    <p class="reviews-live-hint rv">Актуальные отзывы, рейтинг и количество — прямо с Яндекс Карт. Листайте отзывы внутри блока.</p>
-    <div class="yandex-reviews-frame rv">
-      <iframe
-        src="https://yandex.ru/maps-reviews-widget/145439345097?comments"
-        title="Отзывы о барбершопе КНЯЗЬ на Яндекс Картах"
-        loading="lazy"
-        referrerpolicy="strict-origin-when-cross-origin"
-        allow="clipboard-write"
-      ></iframe>
+    <div class="reviews-badge rv">
+      <span class="rb-stars">★★★★★</span>
+      <span class="rb-score" aria-label="Рейтинг на Яндекс Картах">★</span>
+      <span class="rb-count">Отзывы на Яндекс Картах · количество обновляется после успешной синхронизации</span>
+    </div>
+    <div class="reviews-grid" id="reviews-grid">
+      <!--REVIEWS-START-->
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Прихожу уже 3-й год на стрижку и оформление бороды к мастеру Дмитрию. Всегда учитывает и советует пожелания. Мастер своего дела, очень трепетно относится к работе.»</p>
+        <div class="review-footer">
+          <div class="review-author">Илья Г.</div>
+          <div class="review-source">Яндекс Карты</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Без преувеличения, Дмитрий — лучший мастер в городе! Если вы в вечном поиске «своего» барбера — искренне рекомендую записаться.»</p>
+        <div class="review-footer">
+          <div class="review-author">Ivan B.</div>
+          <div class="review-source">Яндекс Карты</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Дима прекрасный мастер, опытный и компетентный в любой просьбе, стригусь второй год уже, и менять не собираюсь! Рекомендую 🔥»</p>
+        <div class="review-footer">
+          <div class="review-author">Игорь Цымбал</div>
+          <div class="review-source">Яндекс Карты</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Очень понравился барбершоп. Мастер сразу понял, чего я хочу, рассказал о паре вариантов. Стрижка получилась как я и хотел. Классная атмосфера.»</p>
+        <div class="review-footer">
+          <div class="review-author">Степан</div>
+          <div class="review-source">Яндекс Карты</div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">«Превосходное место для настоящих ценителей стиля! Обслуживание на высшем уровне, мастера знают своё дело до мелочей. Атмосфера в «Князе» — отдельный кайф.»</p>
+        <div class="review-footer">
+          <div class="review-author">Николай Б.</div>
+          <div class="review-source">Яндекс Карты</div>
+        </div>
+      </div>
+      <!--REVIEWS-END-->
     </div>
     <a href="https://yandex.ru/maps/org/knyaz/145439345097/reviews/" target="_blank" rel="noopener noreferrer" class="reviews-more rv">Все отзывы на Яндекс Картах →</a>
   </div>
