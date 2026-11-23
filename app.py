@@ -560,17 +560,52 @@ def admin_save_prices():
 
 # ── Background updaters ───────────────────────────────────────────────────────
 
-# Reviews are displayed through Yandex's official live iframe, not scraped.
-# The old Playwright scraper triggered SmartCaptcha and is no longer scheduled.
+# Background refresh uses one single Yandex browser visit per day.
+# On CAPTCHA/network errors, do not overwrite the last published cards or counts.
+def _sync_reviews():
+    import update_reviews
+    res = update_reviews.sync()
+    if res.get("ok") and res.get("changed"):
+        res["pushed"] = push_to_github(
+            os.path.join(BASE_DIR, "index.html"), "auto: refresh yandex review cards")
+        if not res["pushed"]:
+            log.warning("Yandex data changed locally, but GitHub push failed")
+    else:
+        res["pushed"] = False
+    return res
+
+
 @app.route('/admin/api/sync-reviews', methods=['POST'])
 @admin_required
 def admin_sync_reviews():
-    return jsonify({
-        'ok': True,
-        'changed': False,
-        'source': 'yandex-reviews-widget',
-        'message': 'Отзывы и рейтинг обновляются Яндексом непосредственно в виджете сайта.'
-    })
+    """Manual one-off sync; no retry loop on CAPTCHA."""
+    try:
+        return jsonify(_sync_reviews())
+    except Exception as e:
+        log.error("Reviews sync error: %s", e)
+        return jsonify({"ok": False, "error": type(e).__name__}), 502
+
+
+def _reviews_loop():
+    """Refresh at 05:35 Moscow time, after nightly YClients service updates."""
+    import datetime
+    moscow = datetime.timezone(datetime.timedelta(hours=3))
+    while True:
+        now = datetime.datetime.now(moscow)
+        next_run = now.replace(hour=5, minute=35, second=0, microsecond=0)
+        if next_run <= now:
+            next_run += datetime.timedelta(days=1)
+        delay = max(1, (next_run - now).total_seconds())
+        log.info("Yandex reviews next automatic refresh in %.0f min", delay / 60)
+        time.sleep(delay)
+        try:
+            res = _sync_reviews()
+            if res.get("ok"):
+                log.info("Yandex review refresh: %s", res)
+            else:
+                log.warning("Yandex review refresh skipped: %s", res.get("error"))
+        except Exception as exc:
+            log.warning("Yandex review refresh crashed: %s", type(exc).__name__)
 
 
 def _yclients_loop():
@@ -624,6 +659,7 @@ def _start_background_updaters():
         return
     _background_lock_fd = fd  # keep lock for the lifetime of this worker
     threading.Thread(target=_yclients_loop, daemon=True, name="yclients-sync").start()
+    threading.Thread(target=_reviews_loop, daemon=True, name="reviews-updater").start()
 
 _start_background_updaters()
 
