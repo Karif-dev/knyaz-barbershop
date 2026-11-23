@@ -433,13 +433,25 @@ def sync():
              rating, review_count, rating_count, len(reviews))
     with open(HTML_FILE, encoding="utf-8") as f:
         content = f.read()
-    new_content, _ = update_html(content, rating, review_count, rating_count)
+    # Our business has a user-verified 4.7 rating. Yandex's page sometimes
+    # exposes a different 5.0 metric. Never silently replace the public score
+    # after an implausible single-sync jump; review the rating source instead.
+    old_match = re.search(r'<span class="rb-score"[^>]*>([1-5](?:[.,]\d+)?)</span>', content)
+    displayed_rating = float(old_match.group(1).replace(",", ".")) if old_match else None
+    rating_conflict = (rating is not None and displayed_rating is not None
+                       and abs(rating - displayed_rating) >= 0.25)
+    if rating_conflict:
+        log.warning("Yandex business rating mismatch: fetched %.1f, on site %.1f. "
+                    "Preserving the confirmed displayed rating.", rating, displayed_rating)
+    trusted_rating = None if rating_conflict else rating
+    new_content, _ = update_html(content, trusted_rating, review_count, rating_count)
     new_content = update_reviews_block(new_content, reviews)
     changed = new_content != content
     if changed:
         with open(HTML_FILE, "w", encoding="utf-8") as f:
             f.write(new_content)
-    return {"ok": True, "changed": changed, "rating": rating,
+    return {"ok": True, "changed": changed, "rating": trusted_rating,
+            "observed_rating": rating, "rating_conflict": rating_conflict,
             "review_count": review_count, "rating_count": rating_count,
             "texts_scraped": len(raw_reviews), "texts_used": len(reviews)}
 
