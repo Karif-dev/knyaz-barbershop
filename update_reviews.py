@@ -274,6 +274,13 @@ _RU_MONTHS = {
 def _date_key(value):
     """ISO and visible Russian publication dates; unknown dates stay at the end."""
     value = str(value or "").strip().lower()
+    # Yandex sometimes renders the newest publication dates relatively.
+    today = datetime.now(timezone.utc).date()
+    if value.startswith("сегодня"):
+        return today.isoformat()
+    if value.startswith("вчера"):
+        from datetime import timedelta
+        return (today - timedelta(days=1)).isoformat()
     m = re.match(r"^(\d{4}-\d{2}-\d{2})", value)
     if m:
         return m.group(1)
@@ -402,6 +409,14 @@ def sync():
     rating, _ = parse_rating_count(page)
     review_count, rating_count = parse_review_and_rating_counts(page, text)
     reviews = select_reviews(raw_reviews)
+    # A parsed count must be consistent with the reviews actually loaded.
+    # Star ratings may exceed written reviews, but not vice versa.
+    if rating_count is not None and review_count is not None and rating_count < review_count:
+        log.warning("Yandex count mismatch: %s written reviews > %s ratings", review_count, rating_count)
+        review_count = rating_count = None
+    if review_count is not None and review_count < len(raw_reviews):
+        log.warning("Yandex count below loaded review cards; keeping previous count")
+        review_count = None
     # No reliable count and too few actual reviews = do not replace the site
     # with empty or inaccurate data.
     if review_count is None and len(reviews) < 3:
