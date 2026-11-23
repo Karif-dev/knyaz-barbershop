@@ -155,54 +155,61 @@ def fetch_urllib(url):
 # ── Parsing ──────────────────────────────────────────────────────────────────
 
 def parse_rating_count(html):
-    # 1. JSON-LD structured data (schema.org)
-    for m in re.finditer(
+    """Only use the organisation's explicit rating, never a 5-star REVIEW's rating.
+
+    Yandex pages carry each review's ratingValue as well as the business
+    rating. A generic first-match search can accidentally choose 5.0.
+    """
+    # The organisation summary badge is authoritative if rendered.
+    patterns = [
+        r'business-summary-rating-badge-view__rating-text[^>]*>\s*([1-5](?:[.,]\d)?)\s*<',
+        r'business-rating-badge-view__rating-text[^>]*>\s*([1-5](?:[.,]\d)?)\s*<',
+        r'business-rating-badge-view__rating-number[^>]*>\s*([1-5](?:[.,]\d)?)\s*<',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, re.I)
+        if match:
+            rating = float(match.group(1).replace(",", "."))
+            log.info("Yandex organisation rating from header badge: %.1f", rating)
+            return rating, None
+
+    # Fallback only to schema entities explicitly describing this BUSINESS.
+    # In particular, don't mistake a Review/Person's aggregateRating for it.
+    for match in re.finditer(
         r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html, re.DOTALL
+        html, re.DOTALL | re.I
     ):
         try:
-            data = json.loads(m.group(1))
-            for item in (data if isinstance(data, list) else [data]):
-                agg = item.get("aggregateRating", {})
-                if agg.get("ratingValue") and agg.get("reviewCount"):
-                    return (float(str(agg["ratingValue"]).replace(",", ".")),
-                            int(str(agg["reviewCount"]).replace(" ", "")))
-        except Exception:
-            pass
-
-    # 2. Embedded JS state blobs
-    m = re.search(r'"rating"\s*:\s*\{[^}]*"value"\s*:\s*([\d.]+)[^}]*"count"\s*:\s*(\d+)', html)
-    if m:
-        return float(m.group(1)), int(m.group(2))
-
-    # 3. Plain attribute patterns
-    rating = count = None
-    m = re.search(r'"ratingValue"\s*:\s*"?([\d.]+)"?', html)
-    if m:
-        rating = float(m.group(1))
-    m = re.search(r'"reviewCount"\s*:\s*(\d+)', html)
-    if m:
-        count = int(m.group(1))
-    if rating and count:
-        return rating, count
-
-    # 4. Rendered DOM (what a real browser sees)
-    m = re.search(
-        r'business-summary-rating-badge-view__rating-text[^>]*>\s*([\d.,]+)\s*<', html)
-    if m:
-        rating = float(m.group(1).replace(",", "."))
-    # tab "Отзывы 44" is preferred, rating-amount ("44 оценки") is the fallback
-    m = (re.search(r'Отзывы\s*(?:<[^>]*>\s*)*(\d+)\s*<', html)
-         or re.search(r'business-rating-amount-view[^>]*>\s*(\d+)', html)
-         or re.search(r'(\d+)\s+(?:отзыв|оцен)', html))
-    if m:
-        count = int(m.group(1))
-    if rating and count:
-        return rating, count
-
-    # Rating is useful even if Yandex did not expose the text-review count.
-    return rating, count
-
+            data = json.loads(match.group(1))
+        except (ValueError, TypeError):
+            continue
+        entries = data if isinstance(data, list) else [data]
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            entries_to_check = entry.get('@graph', [entry])
+            for business in entries_to_check:
+                if not isinstance(business, dict):
+                    continue
+                types = business.get('@type', [])
+                types = [types] if isinstance(types, str) else types
+                valid_type = any(t in (
+                    'LocalBusiness', 'Organization', 'HairSalon', 'BarberShop',
+                    'HealthAndBeautyBusiness'
+                ) for t in types)
+                name = str(business.get('name', '')).casefold()
+                if not valid_type or 'княз' not in name:
+                    continue
+                aggregate = business.get('aggregateRating', {})
+                try:
+                    rating = float(str(aggregate.get('ratingValue', '')).replace(',', '.'))
+                except (ValueError, TypeError, AttributeError):
+                    continue
+                if 1 <= rating <= 5:
+                    log.info("Yandex organisation rating from named business schema: %.1f", rating)
+                    return rating, None
+    log.warning("No reliably identified business rating; keeping last confirmed display")
+    return None, None
 
 def parse_review_and_rating_counts(html, visible_text=""):
     """Never label number of ratings as number of written reviews."""
