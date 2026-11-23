@@ -429,8 +429,8 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
           <div class="infobox">
             Для безопасности пароль больше не хранится в GitHub.
             Меняйте его в Railway → Variables → <code>ADMIN_PASSWORD</code>
-            (не менее 16 символов). После изменения Railway перезапустит приложение.
-            Прежний пароль из публичной истории GitHub использовать нельзя.
+            (минимум 4 символа). После изменения Railway перезапустит приложение.
+            Прежний пароль из публичной истории GitHub использовать нельзя. При коротком пароле вход ограничен пятью неудачными попытками за 15 минут.
           </div>
         </div>
       </div>
@@ -445,7 +445,7 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
           <code>GITHUB_TOKEN</code> — токен с доступом к репо<br>
           <code>GITHUB_REPO</code> — <code>Karif-dev/knyaz-barbershop</code><br>
           <code>GITHUB_BRANCH</code> — <code>main</code><br>
-          <code>ADMIN_PASSWORD</code> — новый уникальный пароль, минимум 16 символов<br>
+          <code>ADMIN_PASSWORD</code> — новый уникальный пароль, минимум 4 символа<br>
           <code>SECRET_KEY</code> — новый случайный секрет, минимум 32 символа
         </div>
         <div class="warn-box">После сохранения Railway перезапустится ~2 мин — изменения появятся на сайте.</div>
