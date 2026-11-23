@@ -31,7 +31,7 @@ ORG_URLS = [
 REVIEWS_LIMIT   = 6    # сколько карточек показывать на сайте
 REVIEW_MIN_STAR = 4    # на сайт берём только 4-5★
 REVIEW_MIN_LEN  = 40   # слишком короткие ("Супер!") пропускаем
-REVIEW_MAX_LEN  = 300  # длинные обрезаем по границе слова
+# Full review texts are displayed; never cut them to a fixed length.
 MARK_START = "<!--REVIEWS-START-->"
 MARK_END   = "<!--REVIEWS-END-->"
 
@@ -64,7 +64,8 @@ _REVIEWS_JS = """
   const q = s => el.querySelector(s);
   const txt = n => (n && n.textContent || '').trim();
   const author = txt(q('.business-review-view__author-name, [itemprop="author"] [itemprop="name"], .business-review-view__author span'));
-  const text = txt(q('.business-review-view__body-text, .spoiler-view__text-container, [itemprop="reviewBody"]'));
+  const textNode = q('.business-review-view__body-text, .spoiler-view__text-container, [itemprop="reviewBody"]');
+  const text = textNode && (textNode.innerText || textNode.textContent || '').trim() || '';
   let rating = 0;
   const meta = q('[itemprop="reviewRating"] meta[itemprop="ratingValue"]');
   if (meta) rating = parseFloat(meta.content) || 0;
@@ -82,7 +83,7 @@ _REVIEWS_JS = """
 
 
 def fetch_playwright(url):
-    """One daily browser session; page and review text returned without extra retries."""
+    """One scheduled visit; expand truncated reviews without bypassing SmartCaptcha."""
     from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True, args=[
@@ -95,20 +96,46 @@ def fetch_playwright(url):
             )
             page = ctx.new_page()
             page.goto(url.rstrip("/") + "/reviews/", wait_until="domcontentloaded", timeout=45000)
-            page.wait_for_timeout(3000)
+            page.wait_for_timeout(2500)
             if _looks_like_captcha(page.content(), page.url):
-                raise CaptchaError("Yandex SmartCaptcha: defer until next scheduled attempt")
+                raise CaptchaError("Yandex SmartCaptcha: defer until next daily attempt")
             try:
                 page.wait_for_selector(".business-review-view", timeout=12000)
             except Exception:
-                log.warning("Yandex reviews DOM not available; retaining saved cards")
-            # Lazy-load the most recent visible review cards without crawling all pages.
-            page.mouse.wheel(0, 1400)
-            page.wait_for_timeout(900)
-            html, plain_text = page.content(), page.locator("body").inner_text(timeout=10000)
+                log.warning("Yandex reviews DOM not available; keeping saved cards")
+            # A small bounded scroll is enough to load recent reviews.
+            for _ in range(2):
+                page.mouse.wheel(0, 1600)
+                page.wait_for_timeout(700)
+            # Yandex sometimes folds long reviews behind 'Ещё' or 'Читать
+            # полностью'. Only click those controls INSIDE review cards.
+            # Do not follow external links or trigger any CAPTCHA challenges.
+            more = page.locator(
+                ".business-review-view button, "
+                ".business-review-view [role='button'], "
+                ".business-review-view a"
+            )
+            expanded = 0
+            for i in range(min(more.count(), 100) - 1, -1, -1):
+                try:
+                    item = more.nth(i)
+                    label = (item.inner_text(timeout=500) or "").strip().lower()
+                    if (label in ("ещё", "еще", "читать полностью",
+                                  "показать полностью", "развернуть",
+                                  "читать далее", "показать ещё", "показать еще")
+                            or "business-review-view__expand" in (item.get_attribute("class") or "")):
+                        item.click(timeout=1200)
+                        expanded += 1
+                except Exception:
+                    continue
+            if expanded:
+                page.wait_for_timeout(350)
+            html = page.content()
             if _looks_like_captcha(html, page.url):
-                raise CaptchaError("Yandex SmartCaptcha: defer until next scheduled attempt")
+                raise CaptchaError("Yandex SmartCaptcha: defer until next daily attempt")
+            plain_text = page.locator("body").inner_text(timeout=10000)
             reviews = page.evaluate(_REVIEWS_JS) or []
+            log.info("Yandex review cards: %d loaded, %d expanded", len(reviews), expanded)
             return html, reviews, plain_text
         finally:
             browser.close()
@@ -221,10 +248,11 @@ def parse_reviews_ld(html):
 
 
 def _clean_text(t):
-    t = re.sub(r"\s+", " ", t or "").strip().strip("«»\"").strip()
-    if len(t) > REVIEW_MAX_LEN:
-        t = t[:REVIEW_MAX_LEN].rsplit(" ", 1)[0].rstrip(" ,;:-—") + "…"
-    return t
+    # Preserve complete words and paragraphs (even for long reviews).
+    t = str(t or "").replace("\r\n", "\n").replace("\r", "\n")
+    t = re.sub(r"[ \t\f\v]+", " ", t)
+    t = re.sub(r"\n\s*\n\s*\n+", "\n\n", t)
+    return t.strip().strip("«»\"").strip()
 
 
 def _short_author(name):
