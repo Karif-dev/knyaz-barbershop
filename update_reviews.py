@@ -134,6 +134,36 @@ def fetch_playwright(url):
             if _looks_like_captcha(html, page.url):
                 raise CaptchaError("Yandex SmartCaptcha: defer until next daily attempt")
             plain_text = page.locator("body").inner_text(timeout=10000)
+            # Diagnostics for the organisation header, NOT individual customer data.
+            meta = page.evaluate("""() => {
+              const sels = [
+                '.business-summary-rating-badge-view__rating-text',
+                '.business-rating-badge-view__rating-text',
+                '.business-rating-badge-view__rating-number',
+                '.business-rating-amount-view',
+                '.orgpage-header-view',
+                '.orgpage-header__rating',
+                '[itemprop="aggregateRating"] [itemprop="ratingValue"]',
+                '[itemprop="aggregateRating"]'
+              ];
+              const candidates = [];
+              for (const selector of sels) {
+                for (const node of document.querySelectorAll(selector)) {
+                  candidates.push({
+                    selector, text:(node.innerText||node.textContent||'').trim().slice(0,90),
+                    outer:node.outerHTML.slice(0,210)
+                  });
+                  if (candidates.length >= 25) break;
+                }
+                if (candidates.length >= 25) break;
+              }
+              return {
+                url:location.href, title:document.title,
+                candidates:candidates.slice(0,25),
+                visibleIntro:document.body.innerText.slice(0,300)
+              };
+            }""")
+            print("YANDEX_ORG_METRICS_DIAGNOSTIC", json.dumps(meta, ensure_ascii=False))
             reviews = page.evaluate(_REVIEWS_JS) or []
             log.info("Yandex review cards: %d loaded, %d expanded", len(reviews), expanded)
             return html, reviews, plain_text
