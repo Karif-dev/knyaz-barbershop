@@ -134,36 +134,6 @@ def fetch_playwright(url):
             if _looks_like_captcha(html, page.url):
                 raise CaptchaError("Yandex SmartCaptcha: defer until next daily attempt")
             plain_text = page.locator("body").inner_text(timeout=10000)
-            # Diagnostics for the organisation header, NOT individual customer data.
-            meta = page.evaluate("""() => {
-              const sels = [
-                '.business-summary-rating-badge-view__rating-text',
-                '.business-rating-badge-view__rating-text',
-                '.business-rating-badge-view__rating-number',
-                '.business-rating-amount-view',
-                '.orgpage-header-view',
-                '.orgpage-header__rating',
-                '[itemprop="aggregateRating"] [itemprop="ratingValue"]',
-                '[itemprop="aggregateRating"]'
-              ];
-              const candidates = [];
-              for (const selector of sels) {
-                for (const node of document.querySelectorAll(selector)) {
-                  candidates.push({
-                    selector, text:(node.innerText||node.textContent||'').trim().slice(0,90),
-                    outer:node.outerHTML.slice(0,210)
-                  });
-                  if (candidates.length >= 25) break;
-                }
-                if (candidates.length >= 25) break;
-              }
-              return {
-                url:location.href, title:document.title,
-                candidates:candidates.slice(0,25),
-                visibleIntro:document.body.innerText.slice(0,300)
-              };
-            }""")
-            print("YANDEX_ORG_METRICS_DIAGNOSTIC", json.dumps(meta, ensure_ascii=False))
             reviews = page.evaluate(_REVIEWS_JS) or []
             log.info("Yandex review cards: %d loaded, %d expanded", len(reviews), expanded)
             return html, reviews, plain_text
@@ -185,61 +155,44 @@ def fetch_urllib(url):
 # ── Parsing ──────────────────────────────────────────────────────────────────
 
 def parse_rating_count(html):
-    """Only use the organisation's explicit rating, never a 5-star REVIEW's rating.
+    """Extract the ORGANISATION'S rating, never an individual review's stars.
 
-    Yandex pages carry each review's ratingValue as well as the business
-    rating. A generic first-match search can accidentally choose 5.0.
+    Yandex renders its visual score split into separate span elements
+    (e.g. "5", ",", "0"). The numeric value and counters are reliably
+    exposed together in the organisation's schema.org AggregateRating
+    microdata. A random ratingValue elsewhere belongs to an individual review.
     """
-    # The organisation summary badge is authoritative if rendered.
-    patterns = [
-        r'business-summary-rating-badge-view__rating-text[^>]*>\s*([1-5](?:[.,]\d)?)\s*<',
-        r'business-rating-badge-view__rating-text[^>]*>\s*([1-5](?:[.,]\d)?)\s*<',
-        r'business-rating-badge-view__rating-number[^>]*>\s*([1-5](?:[.,]\d)?)\s*<',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, html, re.I)
-        if match:
-            rating = float(match.group(1).replace(",", "."))
-            log.info("Yandex organisation rating from header badge: %.1f", rating)
-            return rating, None
-
-    # Fallback only to schema entities explicitly describing this BUSINESS.
-    # In particular, don't mistake a Review/Person's aggregateRating for it.
-    for match in re.finditer(
-        r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html, re.DOTALL | re.I
-    ):
+    scopes = re.findall(
+        r'<(?:span|div)\b[^>]*\bitemprop=["\']aggregateRating["\'][^>]*>'
+        r'(.*?)</(?:span|div)>', html, re.IGNORECASE | re.DOTALL
+    )
+    for scope in scopes:
+        values = {}
+        for tag in re.findall(r'<meta\b[^>]*>', scope, re.IGNORECASE):
+            prop = re.search(r'\bitemprop=["\']([^"\']+)["\']', tag, re.IGNORECASE)
+            value = re.search(r'\bcontent=["\']([^"\']+)["\']', tag, re.IGNORECASE)
+            if prop and value:
+                values[prop.group(1)] = value.group(1)
         try:
-            data = json.loads(match.group(1))
-        except (ValueError, TypeError):
+            rating = float(str(values["ratingValue"]).replace(",", "."))
+        except (KeyError, TypeError, ValueError):
             continue
-        entries = data if isinstance(data, list) else [data]
-        for entry in entries:
-            if not isinstance(entry, dict):
-                continue
-            entries_to_check = entry.get('@graph', [entry])
-            for business in entries_to_check:
-                if not isinstance(business, dict):
-                    continue
-                types = business.get('@type', [])
-                types = [types] if isinstance(types, str) else types
-                valid_type = any(t in (
-                    'LocalBusiness', 'Organization', 'HairSalon', 'BarberShop',
-                    'HealthAndBeautyBusiness'
-                ) for t in types)
-                name = str(business.get('name', '')).casefold()
-                if not valid_type or 'княз' not in name:
-                    continue
-                aggregate = business.get('aggregateRating', {})
-                try:
-                    rating = float(str(aggregate.get('ratingValue', '')).replace(',', '.'))
-                except (ValueError, TypeError, AttributeError):
-                    continue
-                if 1 <= rating <= 5:
-                    log.info("Yandex organisation rating from named business schema: %.1f", rating)
-                    return rating, None
-    log.warning("No reliably identified business rating; keeping last confirmed display")
+        if not 1 <= rating <= 5:
+            continue
+        count = None
+        try:
+            count = int(values["reviewCount"])
+        except (KeyError, ValueError, TypeError):
+            pass
+        log.info("Yandex organisation AggregateRating: %.1f (%s text reviews)", rating, count)
+        return rating, count
+
+    # No confident organisational rating: keep the previously published one.
+    # Do not search any standalone ratingValue metadata; that can belong to
+    # a 5-star testimonial and is unrelated to the overall rating.
+    log.warning("Yandex organisation AggregateRating not found; rating unchanged")
     return None, None
+
 
 def parse_review_and_rating_counts(html, visible_text=""):
     """Never label number of ratings as number of written reviews."""
@@ -463,25 +416,15 @@ def sync():
              rating, review_count, rating_count, len(reviews))
     with open(HTML_FILE, encoding="utf-8") as f:
         content = f.read()
-    # Our business has a user-verified 4.7 rating. Yandex's page sometimes
-    # exposes a different 5.0 metric. Never silently replace the public score
-    # after an implausible single-sync jump; review the rating source instead.
-    old_match = re.search(r'<span class="rb-score"[^>]*>([1-5](?:[.,]\d+)?)</span>', content)
-    displayed_rating = float(old_match.group(1).replace(",", ".")) if old_match else None
-    rating_conflict = (rating is not None and displayed_rating is not None
-                       and abs(rating - displayed_rating) >= 0.25)
-    if rating_conflict:
-        log.warning("Yandex business rating mismatch: fetched %.1f, on site %.1f. "
-                    "Preserving the confirmed displayed rating.", rating, displayed_rating)
-    trusted_rating = None if rating_conflict else rating
-    new_content, _ = update_html(content, trusted_rating, review_count, rating_count)
+    # Update the public site only with the actual organisation AggregateRating
+    # from the fetched Yandex page. Never use a manually supplied fallback.
+    new_content, _ = update_html(content, rating, review_count, rating_count)
     new_content = update_reviews_block(new_content, reviews)
     changed = new_content != content
     if changed:
         with open(HTML_FILE, "w", encoding="utf-8") as f:
             f.write(new_content)
-    return {"ok": True, "changed": changed, "rating": trusted_rating,
-            "observed_rating": rating, "rating_conflict": rating_conflict,
+    return {"ok": True, "changed": changed, "rating": rating,
             "review_count": review_count, "rating_count": rating_count,
             "texts_scraped": len(raw_reviews), "texts_used": len(reviews)}
 
