@@ -561,18 +561,25 @@ def admin_save_prices():
 # ── Background updaters ───────────────────────────────────────────────────────
 
 # Background refresh uses one single Yandex browser visit per day.
-# On CAPTCHA/network errors, do not overwrite the last published cards or counts.
+# On CAPTCHA/network errors, keep the last published cards and counts.
+# Manual sync and scheduled sync must not edit the same HTML concurrently.
+_reviews_sync_lock = threading.Lock()
+_reviews_publish_pending = False
+
 def _sync_reviews():
+    global _reviews_publish_pending
     import update_reviews
-    res = update_reviews.sync()
-    if res.get("ok") and res.get("changed"):
-        res["pushed"] = push_to_github(
-            os.path.join(BASE_DIR, "index.html"), "auto: refresh yandex review cards")
-        if not res["pushed"]:
-            log.warning("Yandex data changed locally, but GitHub push failed")
-    else:
-        res["pushed"] = False
-    return res
+    with _reviews_sync_lock:
+        res = update_reviews.sync()
+        if res.get("ok") and (res.get("changed") or _reviews_publish_pending):
+            res["pushed"] = push_to_github(
+                os.path.join(BASE_DIR, "index.html"), "auto: refresh yandex review cards")
+            _reviews_publish_pending = not res["pushed"]
+            if _reviews_publish_pending:
+                log.warning("Yandex data changed locally, but GitHub push failed; retry next sync")
+        else:
+            res["pushed"] = False
+        return res
 
 
 @app.route('/admin/api/sync-reviews', methods=['POST'])
