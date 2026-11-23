@@ -16,6 +16,7 @@ import ssl
 import logging
 import html as htmllib
 import urllib.request
+from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
 
@@ -73,19 +74,19 @@ _REVIEWS_JS = """
     const m = a && a.getAttribute('aria-label').match(/(\\d)/);
     if (m) rating = parseInt(m[1], 10);
   }
-  return {author, text, rating};
+  const dateNode = q('meta[itemprop="datePublished"], time[datetime], .business-review-view__date');
+  const date = dateNode && (dateNode.getAttribute('content') || dateNode.getAttribute('datetime') || txt(dateNode)) || '';
+  return {author, text, rating, date};
 })
 """
 
 
 def fetch_playwright(url):
-    """Returns (main_page_html, reviews_list). reviews_list may be empty."""
+    """One daily browser session; page and review text returned without extra retries."""
     from playwright.sync_api import sync_playwright
-    reviews = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True, args=[
             "--no-sandbox", "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled",
         ])
         try:
             ctx = browser.new_context(
@@ -93,32 +94,24 @@ def fetch_playwright(url):
                 viewport={"width": 1366, "height": 900},
             )
             page = ctx.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            page.goto(url.rstrip("/") + "/reviews/", wait_until="domcontentloaded", timeout=45000)
+            page.wait_for_timeout(3000)
+            if _looks_like_captcha(page.content(), page.url):
+                raise CaptchaError("Yandex SmartCaptcha: defer until next scheduled attempt")
             try:
-                page.wait_for_selector(
-                    ".business-summary-rating-badge-view__rating-text, "
-                    ".business-rating-amount-view",
-                    timeout=20000,
-                )
+                page.wait_for_selector(".business-review-view", timeout=12000)
             except Exception:
-                page.wait_for_timeout(4000)
-            html, final_url = page.content(), page.url
-            if _looks_like_captcha(html, final_url):
-                raise CaptchaError("Yandex SmartCaptcha")
-
-            # Тексты отзывов — на отдельной вкладке /reviews/
-            try:
-                page.goto(url.rstrip("/") + "/reviews/",
-                          wait_until="domcontentloaded", timeout=60000)
-                page.wait_for_selector(".business-review-view", timeout=20000)
-                page.mouse.wheel(0, 3000)          # подгрузить ещё немного
-                page.wait_for_timeout(1500)
-                reviews = page.evaluate(_REVIEWS_JS) or []
-            except Exception as e:
-                log.warning("Reviews tab scrape failed: %s", e)
+                log.warning("Yandex reviews DOM not available; retaining saved cards")
+            # Lazy-load the most recent visible review cards without crawling all pages.
+            page.mouse.wheel(0, 1400)
+            page.wait_for_timeout(900)
+            html, plain_text = page.content(), page.locator("body").inner_text(timeout=10000)
+            if _looks_like_captcha(html, page.url):
+                raise CaptchaError("Yandex SmartCaptcha: defer until next scheduled attempt")
+            reviews = page.evaluate(_REVIEWS_JS) or []
+            return html, reviews, plain_text
         finally:
             browser.close()
-    return html, reviews
 
 
 def fetch_urllib(url):
@@ -129,7 +122,7 @@ def fetch_urllib(url):
         final_url = resp.geturl()
     if _looks_like_captcha(html, final_url):
         raise CaptchaError("Yandex SmartCaptcha")
-    return html, []
+    return html, [], re.sub(r"<[^>]*>", " ", html)
 
 
 # ── Parsing ──────────────────────────────────────────────────────────────────
@@ -183,6 +176,25 @@ def parse_rating_count(html):
     return None, None
 
 
+def parse_review_and_rating_counts(html, visible_text=""):
+    """Never label number of ratings as number of written reviews."""
+    text = re.sub(r"[\u00a0\u202f]", " ", visible_text or "")
+    # Yandex review tab: separate visible counts for texts and star-only ratings.
+    reviews_match = (
+        re.search(r"(?:^|[^\w])Отзывы\s*[:·]?\s*(\d{1,6})\b", text, re.I)
+        or re.search(r"\b(\d{1,6})\s+отзыв(?:ов|а)?\b", text, re.I)
+    )
+    ratings_match = re.search(r"\b(\d{1,6})\s+оцен(?:ка|ки|ок)\b", text, re.I)
+    # Structured organization data can also carry both independent values.
+    if not reviews_match:
+        reviews_match = re.search(r'"reviewCount"\s*:\s*"?(\d{1,6})', html)
+    if not ratings_match:
+        ratings_match = re.search(r'"ratingCount"\s*:\s*"?(\d{1,6})', html)
+    review_count = int(reviews_match.group(1)) if reviews_match else None
+    rating_count = int(ratings_match.group(1)) if ratings_match else None
+    return review_count, rating_count
+
+
 def parse_reviews_ld(html):
     """Fallback: schema.org Review entries from JSON-LD (if Yandex embeds any)."""
     out = []
@@ -232,9 +244,14 @@ def select_reviews(raw):
         if text in seen:
             continue
         seen.add(text)
-        out.append({"author": _short_author(r.get("author")), "text": text})
+        out.append({"author": _short_author(r.get("author")), "text": text,
+                    "rating": int(round(float(r.get("rating", 5)))), "date": str(r.get("date") or "")})
         if len(out) >= REVIEWS_LIMIT:
             break
+    # Sort by publication dates when Yandex exposes ISO dates in DOM.
+    # For rows without dates, keep Yandex's returned order.
+    if out and all(re.match(r"^\d{4}-\d{2}-\d{2}", r["date"]) for r in out):
+        out.sort(key=lambda r: r["date"], reverse=True)
     return out
 
 
@@ -244,7 +261,7 @@ def render_cards(reviews):
     for r in reviews:
         cards.append(
             '      <div class="review-card">\n'
-            '        <div class="review-stars">★★★★★</div>\n'
+            '        <div class="review-stars">' + '★' * min(5, max(1, r["rating"])) + '☆' * max(0, 5 - r["rating"]) + '</div>\n'
             f'        <p class="review-text">«{esc(r["text"])}»</p>\n'
             '        <div class="review-footer">\n'
             f'          <div class="review-author">{esc(r["author"])}</div>\n'
@@ -279,65 +296,71 @@ def plural_otzyv(n):
     return f"{n} отзывов"
 
 
-def update_html(content, rating, count):
-    rating_dot   = f"{rating:.1f}"              # "5.0"  — .br-score
-    rating_comma = rating_dot.replace(".", ",")  # "5,0"  — .rb-score
-    count_str    = plural_otzyv(count)
+def update_html(content, rating, review_count, rating_count=None):
+    """Change only metrics confirmed during the same successful Yandex fetch."""
     original = content
-
-    content = re.sub(r'(<div class="br-score">)[\d.,]+(</div>)',
-                     rf'\g<1>{rating_dot}\2', content)
-    content = re.sub(r'(<div class="br-count">)\d+\s+отзыв[а-я]*(</div>)',
-                     rf'\g<1>{count_str}\2', content)
-    content = re.sub(r'(<span class="rb-score">)[\d.,]+(</span>)',
-                     rf'\g<1>{rating_comma}\2', content)
-    content = re.sub(r'(<span class="about-rating-score">)[\d.,]+(</span>)',
-                     rf'\g<1>{rating_dot}\2', content)
-    content = re.sub(
-        r'(<span class="rb-count">)\d+\s+отзыв[а-я]*\s+·\s+Яндекс Карты(</span>)',
-        rf'\g<1>{count_str} · Яндекс Карты\2', content)
-
-    # changed = реально изменилось (а не просто "паттерн нашёлся")
+    if rating is not None and 1 <= rating <= 5:
+        dot = f"{rating:.1f}"
+        comma = dot.replace(".", ",")
+        for cls, value in (("br-score", dot), ("rb-score", comma),
+                           ("about-rating-score", dot)):
+            content = re.sub(
+                rf'(<(?:span|div) class="{cls}"[^>]*>).*?(</(?:span|div)>)',
+                lambda m: m.group(1) + value + m.group(2), content, count=1,
+            )
+    if review_count is not None:
+        parts = [plural_otzyv(review_count)]
+        if rating_count is not None and rating_count != review_count:
+            parts.append(f"{rating_count} оценок")
+        parts.append("Яндекс Карты")
+        label = " · ".join(parts)
+        content = re.sub(
+            r'(<span class="rb-count"[^>]*>).*?(</span>)',
+            lambda m: m.group(1) + label + m.group(2), content, count=1,
+        )
+        # The old design sometimes has a second rating tile.
+        content = re.sub(
+            r'(<div class="br-count"[^>]*>).*?(</div>)',
+            lambda m: m.group(1) + plural_otzyv(review_count) + m.group(2),
+            content, count=1,
+        )
     return content, content != original
-
 
 # ── Main entry ───────────────────────────────────────────────────────────────
 
 def sync():
-    """Never raises, never calls sys.exit (safe inside a background thread)."""
-    html, raw_reviews, errors = None, [], []
-    for url in ORG_URLS:
-        for name, fetch in (("playwright", fetch_playwright), ("urllib", fetch_urllib)):
-            try:
-                page, reviews = fetch(url)
-            except Exception as e:
-                errors.append(f"{name} {url}: {e}")
-                log.warning("Reviews fetch via %s failed (%s): %s", name, url, e)
-                continue
-            rating, count = parse_rating_count(page)
-            if rating and count:
-                html, raw_reviews = page, reviews or parse_reviews_ld(page)
-                break
-            errors.append(f"{name} {url}: rating/count not found in page")
-            log.warning("Reviews: %s got page (%d bytes) but no rating/count", name, len(page))
-        if html:
-            break
+    """One best-effort attempt; keep last saved reviews when Yandex blocks automation."""
+    # The public reviews page is the only source for these metrics.
+    url = ORG_URLS[0]
+    try:
+        page, raw_reviews, text = fetch_playwright(url)
+    except CaptchaError as exc:
+        log.warning("Yandex review sync deferred: %s", exc)
+        return {"ok": False, "changed": False, "error": "captcha"}
+    except Exception as exc:
+        log.warning("Yandex reviews unavailable: %s", type(exc).__name__)
+        return {"ok": False, "changed": False, "error": type(exc).__name__}
 
-    if not html:
-        return {"ok": False, "changed": False, "error": "; ".join(errors)}
-
+    rating, _ = parse_rating_count(page)
+    review_count, rating_count = parse_review_and_rating_counts(page, text)
     reviews = select_reviews(raw_reviews)
-    log.info("Yandex → rating=%s, reviews=%s, texts scraped=%d, texts used=%d",
-             rating, count, len(raw_reviews), len(reviews))
+    # No reliable count and too few actual reviews = do not replace the site
+    # with empty or inaccurate data.
+    if review_count is None and len(reviews) < 3:
+        return {"ok": False, "changed": False, "error": "no reliable review data"}
+
+    log.info("Yandex: rating=%s, text reviews=%s, ratings=%s, cards=%d",
+             rating, review_count, rating_count, len(reviews))
     with open(HTML_FILE, encoding="utf-8") as f:
         content = f.read()
-    new_content, changed = update_html(content, rating, count)
+    new_content, _ = update_html(content, rating, review_count, rating_count)
     new_content = update_reviews_block(new_content, reviews)
     changed = new_content != content
     if changed:
         with open(HTML_FILE, "w", encoding="utf-8") as f:
             f.write(new_content)
-    return {"ok": True, "changed": changed, "rating": rating, "count": count,
+    return {"ok": True, "changed": changed, "rating": rating,
+            "review_count": review_count, "rating_count": rating_count,
             "texts_scraped": len(raw_reviews), "texts_used": len(reviews)}
 
 
