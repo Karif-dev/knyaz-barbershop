@@ -58,6 +58,7 @@ async function login(){
     const d=await r.json();
     if(d.ok){window.location='/admin';}
     else{
+      document.getElementById('err').textContent=d.error || 'Неверный пароль';
       document.getElementById('err').style.display='block';
       document.getElementById('btn').style.display='block';
       document.getElementById('sp').style.display='none';
