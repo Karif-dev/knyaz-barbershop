@@ -364,8 +364,8 @@ def update_html(content, rating, review_count, rating_count=None):
             )
     if review_count is not None or rating_count is not None:
         parts = [plural_otzyv(review_count)] if review_count is not None else []
-        if rating_count is not None and (review_count is None or rating_count != review_count):
-            parts.append(f"{rating_count} оценок")
+        if rating_count is not None:
+            parts.append(f"Всего оценок: {rating_count}")
         parts.append("Яндекс Карты")
         label = " · ".join(parts)
         content = re.sub(
