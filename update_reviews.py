@@ -173,7 +173,8 @@ def parse_rating_count(html):
     if rating and count:
         return rating, count
 
-    return None, None
+    # Rating is useful even if Yandex did not expose the text-review count.
+    return rating, count
 
 
 def parse_review_and_rating_counts(html, visible_text=""):
@@ -235,24 +236,52 @@ def _short_author(name):
     return name or "Гость"
 
 
+_RU_MONTHS = {
+    "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
+    "мая": 5, "июня": 6, "июля": 7, "августа": 8,
+    "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12,
+}
+
+
+def _date_key(value):
+    """ISO and visible Russian publication dates; unknown dates stay at the end."""
+    value = str(value or "").strip().lower()
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})", value)
+    if m:
+        return m.group(1)
+    m = re.search(r"(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)(?:\s+(\d{4}))?", value)
+    if not m:
+        return ""
+    day = int(m.group(1))
+    month = _RU_MONTHS[m.group(2)]
+    now = datetime.now(timezone.utc)
+    year = int(m.group(3)) if m.group(3) else now.year
+    if not m.group(3) and (month, day) > (now.month, now.day):
+        year -= 1
+    try:
+        return datetime(year, month, day).date().isoformat()
+    except ValueError:
+        return ""
+
+
 def select_reviews(raw):
     seen, out = set(), []
     for r in raw:
-        text = _clean_text(r.get("text"))
-        if r.get("rating", 0) < REVIEW_MIN_STAR or len(text) < REVIEW_MIN_LEN:
+        txt = _clean_text(r.get("text"))
+        score = float(r.get("rating", 0) or 0)
+        if score < REVIEW_MIN_STAR or len(txt) < REVIEW_MIN_LEN:
             continue
-        if text in seen:
+        if txt in seen:
             continue
-        seen.add(text)
-        out.append({"author": _short_author(r.get("author")), "text": text,
-                    "rating": int(round(float(r.get("rating", 5)))), "date": str(r.get("date") or "")})
-        if len(out) >= REVIEWS_LIMIT:
-            break
-    # Sort by publication dates when Yandex exposes ISO dates in DOM.
-    # For rows without dates, keep Yandex's returned order.
-    if out and all(re.match(r"^\d{4}-\d{2}-\d{2}", r["date"]) for r in out):
-        out.sort(key=lambda r: r["date"], reverse=True)
-    return out
+        seen.add(txt)
+        date = str(r.get("date") or "")
+        out.append({"author": _short_author(r.get("author")), "text": txt,
+                    "rating": min(5, max(1, int(round(score)))), "date": date,
+                    "_date_key": _date_key(date)})
+    # Select the latest six among everything loaded, not the first six before sorting.
+    if any(r["_date_key"] for r in out):
+        out.sort(key=lambda r: r["_date_key"], reverse=True)
+    return out[:REVIEWS_LIMIT]
 
 
 def render_cards(reviews):
