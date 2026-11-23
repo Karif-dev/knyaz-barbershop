@@ -1,0 +1,19 @@
+# Credentials must be configured in Railway Variables, never committed.
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+*.secrets
+secrets.json
+
+# Local Python/browser artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.playwright/
+.cache/
+.DS_Store
