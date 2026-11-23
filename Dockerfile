@@ -18,4 +18,5 @@ RUN pip install --no-cache-dir -r requirements.txt \
 # Copy app
 COPY . .
 
-CMD gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120
+# One worker owns the daily sync scheduler; threaded requests keep admin responsive.
+CMD gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 1 --worker-class gthread --threads 2 --timeout 120
