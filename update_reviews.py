@@ -291,6 +291,8 @@ def update_html(content, rating, count):
                      rf'\g<1>{count_str}\2', content)
     content = re.sub(r'(<span class="rb-score">)[\d.,]+(</span>)',
                      rf'\g<1>{rating_comma}\2', content)
+    content = re.sub(r'(<span class="about-rating-score">)[\d.,]+(</span>)',
+                     rf'\g<1>{rating_dot}\2', content)
     content = re.sub(
         r'(<span class="rb-count">)\d+\s+отзыв[а-я]*\s+·\s+Яндекс Карты(</span>)',
         rf'\g<1>{count_str} · Яндекс Карты\2', content)
