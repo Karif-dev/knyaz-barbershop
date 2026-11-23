@@ -8,6 +8,9 @@ import time
 import logging
 import hashlib
 import urllib.request
+import hmac
+import secrets
+import fcntl
 from io import BytesIO
 
 from flask import Flask, send_from_directory, request, jsonify, session, redirect, url_for, abort
@@ -18,17 +21,25 @@ log = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
 
-app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
-app.secret_key = os.environ.get('SECRET_KEY', 'knyaz-barbershop-secret-key-2024')
+# Only explicitly allowed public media is served; no /config.json or /app.py leaks.
+app = Flask(__name__, static_folder=None)
+_admin_secret = os.environ.get("ADMIN_PASSWORD", "")
+_session_seed = os.environ.get("SECRET_KEY") or secrets.token_urlsafe(48)
+# The admin password is also part of the session signing key: old exposed
+# fallback Flask secrets alone cannot forge admin cookies after this change.
+app.secret_key = hmac.new(_session_seed.encode(), ("knyaz-session:" + _admin_secret).encode(), hashlib.sha256).hexdigest()
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=True)
 
 # ── Config helpers ───────────────────────────────────────────────────────────
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            cfg = json.load(f)
+        # Ignore legacy values even on a container running an old snapshot.
+        cfg.pop("admin_password", None)
+        return cfg
     return {
-        "admin_password": "knyaz2024",
         "gallery": [],
         "team": [],
         "service_images": {},
@@ -36,8 +47,10 @@ def load_config():
     }
 
 def save_config(cfg):
+    # Never publish admin credentials through config.json or GitHub.
+    safe_cfg = {k: v for k, v in cfg.items() if k != "admin_password"}
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-        json.dump(cfg, f, ensure_ascii=False, indent=2)
+        json.dump(safe_cfg, f, ensure_ascii=False, indent=2)
 
 def push_to_github(filepath, commit_msg=None):
     """Push a single file to GitHub using http.client (proxy-safe)."""
@@ -91,10 +104,23 @@ def push_to_github(filepath, commit_msg=None):
         log.warning("GitHub PUT failed: %s", e)
         return False
 
+def _admin_password():
+    value = os.environ.get("ADMIN_PASSWORD", "")
+    # A leaked historical password must never be an implicit fallback.
+    return value if len(value) >= 16 else None
+
+
+def _password_valid(given):
+    expected = _admin_password()
+    return bool(expected and isinstance(given, str) and hmac.compare_digest(given, expected))
+
+
 def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
+        if not _admin_password():
+            return jsonify({'ok': False, 'error': 'ADMIN_PASSWORD не настроен в Railway (не менее 16 символов)'}), 503
         if not session.get('admin_logged_in'):
             return redirect('/admin/login')
         return f(*args, **kwargs)
@@ -113,6 +139,17 @@ def api_config():
     safe = {k: v for k, v in cfg.items() if k != 'admin_password'}
     return jsonify(safe)
 
+
+PUBLIC_MEDIA_TYPES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".ico"}
+
+@app.route('/<path:filename>')
+def public_media(filename):
+    # All site's local media live at repository root. Block all nested paths,
+    # Python code, config files, HTML admin pages, Git files and source maps.
+    if '/' in filename or filename.startswith('.') or os.path.splitext(filename)[1].lower() not in PUBLIC_MEDIA_TYPES:
+        abort(404)
+    return send_from_directory(BASE_DIR, filename)
+
 # ── Admin auth ───────────────────────────────────────────────────────────────
 
 @app.route('/admin')
@@ -124,12 +161,13 @@ def admin_panel():
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
-        pwd = request.form.get('password', '')
-        cfg = load_config()
-        if pwd == cfg.get('admin_password', 'knyaz2024'):
+        if not _admin_password():
+            return "ADMIN_PASSWORD не настроен в Railway", 503
+        if _password_valid(request.form.get('password', '')):
+            session.clear()
             session['admin_logged_in'] = True
             return redirect('/admin')
-        return send_from_directory(BASE_DIR, 'admin.html')  # handled by admin.html JS
+        return send_from_directory(BASE_DIR, 'admin_login.html'), 401
     return send_from_directory(BASE_DIR, 'admin_login.html')
 
 @app.route('/admin/logout')
@@ -139,10 +177,11 @@ def admin_logout():
 
 @app.route('/admin/auth', methods=['POST'])
 def admin_auth():
-    data = request.get_json() or {}
-    pwd = data.get('password', '')
-    cfg = load_config()
-    if pwd == cfg.get('admin_password', 'knyaz2024'):
+    if not _admin_password():
+        return jsonify({'ok': False, 'error': 'ADMIN_PASSWORD не настроен в Railway'}), 503
+    data = request.get_json(silent=True) or {}
+    if _password_valid(data.get('password', '')):
+        session.clear()
         session['admin_logged_in'] = True
         return jsonify({'ok': True})
     return jsonify({'ok': False, 'error': 'Неверный пароль'}), 401
@@ -157,10 +196,12 @@ def admin_get_config():
 @app.route('/admin/api/save', methods=['POST'])
 @admin_required
 def admin_save():
-    """Save full config (gallery order, team, service images, password)."""
+    """Save non-secret settings only; credentials live in Railway env."""
     data = request.get_json()
     if not data:
         return jsonify({'ok': False, 'error': 'no data'}), 400
+    if data.get('new_password'):
+        return jsonify({'ok': False, 'error': 'Пароль теперь меняется через ADMIN_PASSWORD в Railway, не через GitHub'}), 400
 
     cfg = load_config()
 
@@ -170,9 +211,6 @@ def admin_save():
         cfg['team'] = data['team']
     if 'service_images' in data:
         cfg['service_images'] = data['service_images']
-    if 'new_password' in data and data['new_password']:
-        cfg['admin_password'] = data['new_password']
-
     save_config(cfg)
     ok = push_to_github(CONFIG_FILE, "admin: update config")
     return jsonify({'ok': True, 'pushed': ok})
@@ -406,6 +444,26 @@ def _fetch_yclients_services():
     return []
 
 
+def _services_signature(services):
+    """Compare only meaningful prices and names, ignoring order and sync timestamps."""
+    return sorted((str(s.get('name', '')).strip(), int(s.get('price', 0)))
+                  for s in services if s.get('name'))
+
+
+def _persist_yclients_services(services, commit_message):
+    cfg = load_config()
+    if _services_signature(cfg.get('services_prices', {}).get('services', [])) == _services_signature(services):
+        log.info("YClients: unchanged (%d services), no commit or redeploy", len(services))
+        return False
+    cfg['services_prices'] = {
+        "last_sync": time.strftime("%Y-%m-%d %H:%M"),
+        "services": services,
+    }
+    save_config(cfg)
+    push_to_github(CONFIG_FILE, commit_message)
+    return True
+
+
 @app.route('/admin/api/sync-yclients', methods=['POST'])
 @admin_required
 def admin_sync_yclients():
@@ -422,14 +480,8 @@ def admin_sync_yclients():
                 )
             })
 
-        cfg = load_config()
-        cfg['services_prices'] = {
-            "last_sync": time.strftime("%Y-%m-%d %H:%M"),
-            "services": services
-        }
-        save_config(cfg)
-        push_to_github(CONFIG_FILE, "auto: sync yclients prices")
-        return jsonify({'ok': True, 'services': services, 'count': len(services)})
+        changed = _persist_yclients_services(services, "auto: sync yclients prices")
+        return jsonify({'ok': True, 'services': services, 'count': len(services), 'changed': changed})
     except Exception as e:
         log.error("YClients sync error: %s", e)
         return jsonify({'ok': False, 'error': str(e)})
@@ -458,14 +510,8 @@ def admin_save_prices():
     if not clean:
         return jsonify({'ok': False, 'error': 'Нет данных для сохранения'}), 400
 
-    cfg = load_config()
-    cfg['services_prices'] = {
-        "last_sync": time.strftime("%Y-%m-%d %H:%M") + " (ручной ввод)",
-        "services": clean
-    }
-    save_config(cfg)
-    push_to_github(CONFIG_FILE, "admin: manual price list update")
-    return jsonify({'ok': True, 'count': len(clean)})
+    changed = _persist_yclients_services(clean, "admin: manual price list update")
+    return jsonify({'ok': True, 'count': len(clean), 'changed': changed})
 
 
 # ── Background updaters ───────────────────────────────────────────────────────
@@ -537,14 +583,8 @@ def _yclients_loop():
         try:
             services = _fetch_yclients_services()
             if services:
-                cfg = load_config()
-                cfg['services_prices'] = {
-                    "last_sync": time.strftime("%Y-%m-%d %H:%M"),
-                    "services": services
-                }
-                save_config(cfg)
-                push_to_github(CONFIG_FILE, "auto: sync yclients prices+services")
-                log.info("YClients auto-sync: %d services updated", len(services))
+                changed = _persist_yclients_services(services, "auto: sync yclients prices+services")
+                log.info("YClients auto-sync: %d services checked, changed=%s", len(services), changed)
             else:
                 log.warning("YClients auto-sync: no services found")
         except Exception as e:
@@ -553,8 +593,25 @@ def _yclients_loop():
         # Sleep 23h before re-checking the window (avoids double-run in same night)
         time.sleep(23 * 60 * 60)
 
-threading.Thread(target=_reviews_loop, daemon=True, name="reviews-updater").start()
-threading.Thread(target=_yclients_loop, daemon=True, name="yclients-sync").start()
+_background_lock_fd = None
+
+def _start_background_updaters():
+    """One scheduler per host even if gunicorn runs multiple worker processes."""
+    global _background_lock_fd
+    if os.environ.get('DISABLE_BACKGROUND_SYNC') == '1':
+        return
+    fd = os.open('/tmp/knyaz-background-updaters.lock', os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        log.info("Background sync already owned by another worker")
+        return
+    _background_lock_fd = fd  # keep lock for the lifetime of this worker
+    threading.Thread(target=_reviews_loop, daemon=True, name="reviews-updater").start()
+    threading.Thread(target=_yclients_loop, daemon=True, name="yclients-sync").start()
+
+_start_background_updaters()
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
