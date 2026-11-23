@@ -1,0 +1,41 @@
+name: Refresh Yandex reviews (manual and initial run)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/reviews-sync.yml'
+permissions:
+  contents: write
+concurrency:
+  group: knyaz-yandex-reviews
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install free browser runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'playwright>=1.40,<2'
+          python -m playwright install --with-deps chromium
+      - name: Fetch Yandex rating and recent reviews once
+        run: python update_reviews.py
+      - name: Publish only changed site content
+        run: |
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No new reviews or rating changes"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'auto: sync Knyaz Yandex reviews'
+          git pull --rebase origin main
+          git push origin HEAD:main
