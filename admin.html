@@ -426,15 +426,12 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
           Пароль входа
         </div>
         <div class="set-s">
-          <div class="fl">
-            <label class="fl-l" for="pw1">Новый пароль</label>
-            <input type="password" class="fi" id="pw1" placeholder="Введите новый пароль" autocomplete="new-password">
+          <div class="infobox">
+            Для безопасности пароль больше не хранится в GitHub.
+            Меняйте его в Railway → Variables → <code>ADMIN_PASSWORD</code>
+            (не менее 16 символов). После изменения Railway перезапустит приложение.
+            Прежний пароль из публичной истории GitHub использовать нельзя.
           </div>
-          <div class="fl">
-            <label class="fl-l" for="pw2">Повторите пароль</label>
-            <input type="password" class="fi" id="pw2" placeholder="Повторите пароль" autocomplete="new-password">
-          </div>
-          <button class="pw-btn" onclick="changePassword()">Сменить пароль</button>
         </div>
       </div>
       <div class="card">
@@ -448,7 +445,8 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
           <code>GITHUB_TOKEN</code> — токен с доступом к репо<br>
           <code>GITHUB_REPO</code> — <code>Karif-dev/knyaz-barbershop</code><br>
           <code>GITHUB_BRANCH</code> — <code>main</code><br>
-          <code>SECRET_KEY</code> — любая случайная строка
+          <code>ADMIN_PASSWORD</code> — новый уникальный пароль, минимум 16 символов<br>
+          <code>SECRET_KEY</code> — новый случайный секрет, минимум 32 символа
         </div>
         <div class="warn-box">После сохранения Railway перезапустится ~2 мин — изменения появятся на сайте.</div>
       </div>
@@ -735,20 +733,6 @@ async function publishAll(){
     }else toast(d.error||'Ошибка сохранения','err');
   }catch{toast('Ошибка сети','err')}
   btn.classList.remove('busy');btn.innerHTML=ORIG;
-}
-
-// ── Password ──────────────────────────────
-async function changePassword(){
-  const p1=document.getElementById('pw1').value;
-  const p2=document.getElementById('pw2').value;
-  if(!p1){toast('Введите пароль','err');return}
-  if(p1!==p2){toast('Пароли не совпадают','err');return}
-  try{
-    const r=await fetch('/admin/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_password:p1})});
-    const d=await r.json();
-    if(d.ok){toast('Пароль изменён','ok');document.getElementById('pw1').value='';document.getElementById('pw2').value=''}
-    else toast(d.error||'Ошибка','err');
-  }catch{toast('Ошибка сети','err')}
 }
 
 // ── Utils ─────────────────────────────────
