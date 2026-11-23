@@ -337,9 +337,9 @@ def update_html(content, rating, review_count, rating_count=None):
                 rf'(<(?:span|div) class="{cls}"[^>]*>).*?(</(?:span|div)>)',
                 lambda m: m.group(1) + value + m.group(2), content, count=1,
             )
-    if review_count is not None:
-        parts = [plural_otzyv(review_count)]
-        if rating_count is not None and rating_count != review_count:
+    if review_count is not None or rating_count is not None:
+        parts = [plural_otzyv(review_count)] if review_count is not None else []
+        if rating_count is not None and (review_count is None or rating_count != review_count):
             parts.append(f"{rating_count} оценок")
         parts.append("Яндекс Карты")
         label = " · ".join(parts)
@@ -348,11 +348,12 @@ def update_html(content, rating, review_count, rating_count=None):
             lambda m: m.group(1) + label + m.group(2), content, count=1,
         )
         # The old design sometimes has a second rating tile.
-        content = re.sub(
-            r'(<div class="br-count"[^>]*>).*?(</div>)',
-            lambda m: m.group(1) + plural_otzyv(review_count) + m.group(2),
-            content, count=1,
-        )
+        if review_count is not None:
+            content = re.sub(
+                r'(<div class="br-count"[^>]*>).*?(</div>)',
+                lambda m: m.group(1) + plural_otzyv(review_count) + m.group(2),
+                content, count=1,
+            )
     return content, content != original
 
 # ── Main entry ───────────────────────────────────────────────────────────────
