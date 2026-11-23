@@ -435,6 +435,18 @@ textarea.fi{resize:vertical;min-height:58px;line-height:1.5}
         </div>
       </div>
       <div class="card">
+        <div class="card-hd"><span class="gold-bar"></span>Яндекс Карты · отзывы</div>
+        <div class="set-s">
+          <div class="infobox">
+            Шесть последних подходящих отзывов, полные тексты, рейтинг и количество
+            обновляются один раз в сутки в 05:35 по Москве. Если Яндекс
+            возвращает капчу, прежние данные на сайте сохраняются.
+          </div>
+          <button type="button" class="pw-btn" id="yandex-sync-btn" onclick="syncYandexReviews()">Обновить отзывы сейчас</button>
+          <div id="yandex-sync-status" aria-live="polite" style="margin-top:12px;font-size:13px;line-height:1.5"></div>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-hd">
           <span class="gold-bar"></span>
           GitHub и деплой
@@ -733,6 +745,42 @@ async function publishAll(){
     }else toast(d.error||'Ошибка сохранения','err');
   }catch{toast('Ошибка сети','err')}
   btn.classList.remove('busy');btn.innerHTML=ORIG;
+}
+
+// ── Yandex reviews manual sync ─────────────────────────
+async function syncYandexReviews(){
+  const btn=document.getElementById('yandex-sync-btn');
+  const status=document.getElementById('yandex-sync-status');
+  if(!btn||!status)return;
+  btn.disabled=true;
+  btn.textContent='Загружаются отзывы…';
+  status.textContent='Запрос к Яндекс Картам выполняется. При капче сохранённые отзывы не изменятся.';
+  try{
+    const response=await fetch('/admin/api/sync-reviews',{method:'POST'});
+    const data=await response.json();
+    if(!response.ok||!data.ok){
+      status.textContent=data.error==='captcha'
+        ? 'Яндекс показал капчу. Повторных запросов нет; сохранённые отзывы остались на сайте.'
+        : 'Обновление не выполнено: '+(data.error||'не удалось получить данные');
+      toast('Отзывы пока не обновились','err');
+    }else{
+      const parts=[];
+      if(data.review_count!=null)parts.push('отзывов: '+data.review_count);
+      if(data.rating_count!=null)parts.push('оценок: '+data.rating_count);
+      if(data.texts_used!=null)parts.push('подходящих карточек: '+data.texts_used);
+      if(data.changed&&!data.pushed)parts.push('ВНИМАНИЕ: отправка на GitHub не удалась');
+      status.textContent='Проверка завершена. '+(parts.join(' · ')||'Новых данных нет.')+
+        (data.pushed?' · изменения опубликованы в GitHub.':'');
+      toast(data.changed&&!data.pushed?'Не удалось опубликовать обновление':'Проверка Яндекс Карт завершена',
+        data.changed&&!data.pushed?'err':'ok');
+    }
+  }catch(e){
+    status.textContent='Ошибка соединения при запросе к серверу.';
+    toast('Не удалось проверить отзывы','err');
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Обновить отзывы сейчас';
+  }
 }
 
 // ── Utils ─────────────────────────────────
