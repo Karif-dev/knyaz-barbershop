@@ -107,7 +107,7 @@ def push_to_github(filepath, commit_msg=None):
 def _admin_password():
     value = os.environ.get("ADMIN_PASSWORD", "")
     # A leaked historical password must never be an implicit fallback.
-    return value if len(value) >= 16 else None
+    return value if len(value) >= 4 else None
 
 
 def _password_valid(given):
@@ -115,12 +115,48 @@ def _password_valid(given):
     return bool(expected and isinstance(given, str) and hmac.compare_digest(given, expected))
 
 
+# A four-character password is weak on a public site, so limit online guesses.
+# This lock is shared by HTTP login endpoints in the single Gunicorn worker.
+_AUTH_FAILURES = {}
+_AUTH_LOCK = threading.Lock()
+_AUTH_WINDOW = 15 * 60
+_AUTH_MAX_FAILURES = 5
+
+def _auth_client_key():
+    return request.remote_addr or "unknown"
+
+def _auth_is_blocked():
+    key = _auth_client_key()
+    now = time.monotonic()
+    with _AUTH_LOCK:
+        attempts = [t for t in _AUTH_FAILURES.get(key, []) if now - t < _AUTH_WINDOW]
+        if attempts:
+            _AUTH_FAILURES[key] = attempts
+        else:
+            _AUTH_FAILURES.pop(key, None)
+        return len(attempts) >= _AUTH_MAX_FAILURES
+
+def _auth_record_failure():
+    key = _auth_client_key()
+    now = time.monotonic()
+    with _AUTH_LOCK:
+        _AUTH_FAILURES[key] = [t for t in _AUTH_FAILURES.get(key, [])
+                                if now - t < _AUTH_WINDOW] + [now]
+        # Keep memory bounded if bots send many distinct addresses.
+        if len(_AUTH_FAILURES) > 4000:
+            for old_key in list(_AUTH_FAILURES)[:1000]:
+                _AUTH_FAILURES.pop(old_key, None)
+
+def _auth_clear_failures():
+    with _AUTH_LOCK:
+        _AUTH_FAILURES.pop(_auth_client_key(), None)
+
 def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
         if not _admin_password():
-            return jsonify({'ok': False, 'error': 'ADMIN_PASSWORD не настроен в Railway (не менее 16 символов)'}), 503
+            return jsonify({'ok': False, 'error': 'ADMIN_PASSWORD не настроен в Railway (не менее 4 символов)'}), 503
         if not session.get('admin_logged_in'):
             return redirect('/admin/login')
         return f(*args, **kwargs)
@@ -163,10 +199,14 @@ def admin_login():
     if request.method == 'POST':
         if not _admin_password():
             return "ADMIN_PASSWORD не настроен в Railway", 503
+        if _auth_is_blocked():
+            return "Слишком много попыток. Повтори через 15 минут.", 429
         if _password_valid(request.form.get('password', '')):
+            _auth_clear_failures()
             session.clear()
             session['admin_logged_in'] = True
             return redirect('/admin')
+        _auth_record_failure()
         return send_from_directory(BASE_DIR, 'admin_login.html'), 401
     return send_from_directory(BASE_DIR, 'admin_login.html')
 
@@ -179,11 +219,15 @@ def admin_logout():
 def admin_auth():
     if not _admin_password():
         return jsonify({'ok': False, 'error': 'ADMIN_PASSWORD не настроен в Railway'}), 503
+    if _auth_is_blocked():
+        return jsonify({'ok': False, 'error': 'Слишком много попыток. Повтори через 15 минут.'}), 429
     data = request.get_json(silent=True) or {}
     if _password_valid(data.get('password', '')):
+        _auth_clear_failures()
         session.clear()
         session['admin_logged_in'] = True
         return jsonify({'ok': True})
+    _auth_record_failure()
     return jsonify({'ok': False, 'error': 'Неверный пароль'}), 401
 
 # ── Admin API ────────────────────────────────────────────────────────────────
