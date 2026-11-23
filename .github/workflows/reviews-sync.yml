@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/reviews-sync.yml'
+      - 'update_reviews.py'
 permissions:
   contents: write
 concurrency:
